@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/gerliandro/Documentos/git/sfml-chessboard/build",
+  "command": "/usr/bin/g++    -O3 -DNDEBUG   -std=gnu++17 -o CMakeFiles/chess-board.dir/src/main.cpp.o -c /home/gerliandro/Documentos/git/sfml-chessboard/src/main.cpp",
+  "file": "/home/gerliandro/Documentos/git/sfml-chessboard/src/main.cpp"
+}
+]

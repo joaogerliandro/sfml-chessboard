@@ -1,0 +1,7 @@
+# ninja log v5
+0	384	1650827206584362911	CMakeFiles/chess-board.dir/src/main.cpp.o	6e7aa43ed874e1ff
+385	424	1650827206624362844	bin/chess-board	b190feffa75075be
+0	435	1650827492219957767	CMakeFiles/chess-board.dir/src/main.cpp.o	be1cb65586a087c
+435	483	1650827492267957708	bin/chess-board	5a6b29a2fd71ab94
+1	507	1650829758809720721	CMakeFiles/chess-board.dir/src/main.cpp.o	30c516027f826d4c
+507	550	1650829758853720672	bin/chess-board	df357d8560b90691
