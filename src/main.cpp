@@ -4,25 +4,34 @@
 #include <string>
 
 #include <SFML/Window.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/OpenGL.hpp>
 #include <glm/glm.hpp>
 
 typedef struct tile
 {
-    glm::vec3 coordinates;
+    glm::vec2 side_x;
+    glm::vec2 side_y;
+
+    glm::vec2 world_cords;
+
     bool      selected   = false,
               has_object = false;
 }Tile;
 
 std::vector<Tile> tiles_map;
 
-glm::vec3 ortho_value, viewport1_size,
-          tile_len, board_len,
-          matrix_len, aux_len;
+glm::vec2 aux_tile_len, aux_position, selected_tile;
+glm::vec3 ortho_value,
+          tile_len;
+
+sf::Vector2i mouse_position, window_size;
+sf::Vector2f world_size, world_position;
 
 
 bool fullscreen    = false,
-     tiles_maped   = false;
+     tiles_maped   = false,
+     has_selected  = false;
 std::string title_name("OpenGL Chessboard");
 
 sf::ContextSettings gl_settings()
@@ -41,85 +50,57 @@ void ortho_axis()
 {
     glColor3f(1, 0, 0);
     glBegin(GL_LINES);
-        glVertex3f(0,  viewport1_size.y, 0); 
-        glVertex3f(0, -viewport1_size.y, 0); 
+        glVertex3f(ortho_value.x / 2,  ortho_value.y, 0); 
+        glVertex3f(ortho_value.x / 2, 0, 0); 
 
-        glVertex3f(-viewport1_size.x, 0, 0);
-        glVertex3f( viewport1_size.x, 0, 0); 
+        glVertex3f(0, ortho_value.y / 2, 0);
+        glVertex3f(ortho_value.x, ortho_value.y / 2, 0); 
     glEnd();
 }
 
-void drawn_tiles(double width, double height)
+void drawn_tiles()
 {
-    if(width < 2.0 || height < 2.0)
+    if(ortho_value.x < 2.0 || ortho_value.y < 2.0)
         return;
 
     Tile aux_obj;
-    matrix_len = glm::vec3(width, height, 1);
 
-    board_len = glm::vec3(
-                          viewport1_size.x,
-                          viewport1_size.y,
-                          viewport1_size.z
-    );
-    
-    tile_len = glm::vec3(board_len.x / width ,
-                         board_len.y / height,
-                         board_len.z);
+    for(Tile tile : tiles_map)
+        if(tile.selected)
+        {
+            has_selected = true;
+            selected_tile = glm::vec2(tile.world_cords.x, tile.world_cords.y);
+        }
 
-    for(int x = 0; x < width; x++)
+    for(int x = 0; x < ortho_value.x; x++)
     {
-        for(int y = 1; y <= height; y++)
+        for(int y = 0; y < ortho_value.y; y++)
         {
             if((x + y) % 2 == 0)
                 glColor3f(0, 0, 0);
             else
                 glColor3f(1, 1, 1);
 
-            /*
-                A: x, y       B: x+len, y
-                C: x, y+len   D: x+len, y+len 
-            */
+            if(x == selected_tile.x && y == selected_tile.y && has_selected)
+                glColor4f(1, 0, 0, 0.03);
 
             glBegin(GL_QUADS);
-                glVertex3f(-(board_len.x / 2) + x * tile_len.x,
-                            (board_len.y / 2) - y * tile_len.y,
-                                                    tile_len.z
-                );//A: x, y
+                glVertex3f(x, ortho_value.y - y, ortho_value.z); //A: x, y
                 
-                glVertex3f(-(board_len.x / 2) + x * tile_len.x + tile_len.x,
-                            (board_len.y / 2) - y * tile_len.y,
-                                                    tile_len.z
-                ); //B: x+len, y
+                glVertex3f(x + 1, ortho_value.y - y, ortho_value.z); //B: x+len, y
 
-                glVertex3f(-(board_len.x / 2) + x * tile_len.x + tile_len.x,
-                            (board_len.y / 2) - y * tile_len.y + tile_len.y,
-                                                    tile_len.z    
-                ); //D: x+len, y+len
+                glVertex3f(x + 1, ortho_value.y - (y + 1), ortho_value.z ); //D: x+len, y+len
 
-                glVertex3f(-(board_len.x / 2) + x * tile_len.x,
-                            (board_len.y / 2) - y * tile_len.y + tile_len.y,
-                                                    tile_len.z
-                ); //C: x, y+len
+                glVertex3f(x, ortho_value.y - (y + 1), ortho_value.z); //C: x, y+len
             glEnd();
 
             if(!tiles_maped)
             {
-                //XB + XA (Invertemos o sinal devido contarmos do eixo negativo)
-                aux_len.x = (-(board_len.x / 2) + x * tile_len.x + tile_len.x) 
-                                                + 
-                            (-(board_len.x / 2) + x * tile_len.x);            
-                
-                //YC + YA (Invertemos o sinal devido contarmos do eixo negativo)
-                aux_len.y = ((board_len.y / 2) - y * tile_len.y + tile_len.y)
-                                               +
-                            ((board_len.y / 2) - y * tile_len.y);
+                aux_obj.side_x = glm::vec2(x, x + 1);
+                aux_obj.side_y = glm::vec2(ortho_value.y - y, ortho_value.y - (y + 1));
+    
+                aux_obj.world_cords = glm::vec2(x, y);
 
-                /* aux_x_len = (-ortho_value.x + ((x * tile_len_x)) + tile_len_x) + (-ortho_value.x + (x * tile_len_x)); //XB - XA
-                aux_y_len = (ortho_value.y - ((y * tile_len_y) - tile_len_y))  + ortho_value.y - (y * tile_len_y);    //YC - YA */
-                
-                aux_obj.coordinates.x = aux_len.x;
-                aux_obj.coordinates.y = aux_len.y; 
                 tiles_map.push_back(aux_obj);
             } 
         }
@@ -132,9 +113,15 @@ void draw_context()
 {
     glClearColor(1, 1, 1, 1);
 
-    drawn_tiles(8, 8);
+    drawn_tiles();
 
-    ortho_axis();
+    /* ortho_axis(); */
+}
+
+void draw_perspective()
+{
+    glClearColor(0.25, 0.25, 0.25, 1);
+
 }
 
 void opengl_init()
@@ -147,34 +134,47 @@ void opengl_init()
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(
-            -(viewport1_size.x / 2),   (viewport1_size.x / 2),
-            -(viewport1_size.y / 2),   (viewport1_size.y / 2),
-             (viewport1_size.z    ),  -(viewport1_size.z    )
-           );
+            0, ortho_value.x,
+            0, ortho_value.y,
+            -ortho_value.z, ortho_value.z
+    );
 }
 
 void print_tiles_map()
 {
     for (Tile tile : tiles_map)
-        std::cout << "("  << tile.coordinates.x 
-                  << ", " << tile.coordinates.y
-                  << ")"  << std::endl; 
+    {
+        std::cout << "Tile Sides -> X : ["      << tile.side_x.x 
+                  << ", "                       << tile.side_x.y
+                  << "] ,";
+        
+        std::cout << " Y : ["  << tile.side_y.x 
+                  << ", "      << tile.side_y.y
+                  << "] \t"; 
 
-    std::cout << "Tiles Len: "  << tiles_map.size() 
+        std::cout << "World Cords -> X : ["     << tile.world_cords.x 
+                  << ", "                       << tile.world_cords.y
+                  << "] \t";
+
+        if(tile.selected)
+            std::cout << "Selected: True" << std::endl;
+        else
+            std::cout << "Selected: False" << std::endl;
+    }
+
+    std::cout << "TilesMap Len: "  << tiles_map.size() 
               << std::endl;
 }
 
 int main()
 {
-    sf::Window window(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
-    sf::Vector2i local_position;
+    sf::RenderWindow window(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
+    window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(false);
     window.setActive(true);
 
-    viewport1_size = glm::vec3(window.getPosition().x / 2,
-                               window.getPosition().y,
-                               1);
+    ortho_value = glm::vec3(8, 8, 1);
     opengl_init();
 
     bool run = true;
@@ -193,17 +193,46 @@ int main()
                     run = false;
                     break;
                 case sf::Event::Resized:
-                    glViewport(0, 0, event.size.width / 2, event.size.height); //Viewport 1
-                    //Viewport 2
+                    window_size = sf::Vector2i(event.size.width, event.size.height);
                     break;
                 case sf::Event::MouseButtonPressed:
                     switch (event.mouseButton.button)
                     {
                         case sf::Mouse::Button::Left:
-                            local_position = sf::Mouse::getPosition(window);
-                            std::cout << "("  << (int32_t) ((((local_position.x) / 2) / matrix_len.x) / tile_len.x)
-                                      << ", " << (int32_t) (((local_position.y) / matrix_len.y) / tile_len.y)
-                                      << ")"  << std::endl;
+                            mouse_position = sf::Mouse::getPosition(window);
+                            world_position = window.mapPixelToCoords(mouse_position);
+                            world_size     = window.mapPixelToCoords(window_size);
+
+                            aux_tile_len = glm::vec2(
+                                                    (world_size.x / (2.f * ortho_value.x)), 
+                                                    (world_size.y / (ortho_value.y))
+                            ); 
+                            aux_position = glm::vec2((int32_t) (world_position.x / aux_tile_len.x),
+                                                   (int32_t) (world_position.y / aux_tile_len.y)
+                            );
+
+                            std::cout << "["  << aux_position.x
+                                      << ", " << aux_position.y
+                                      << "]"  << std::endl;
+
+                            for(int32_t i = 0; i < tiles_map.size(); i++)
+                            {
+                                if(tiles_map[i].world_cords.x == aux_position.x && tiles_map[i].world_cords.y == aux_position.y)
+                                {
+                                    if(tiles_map[i].selected)
+                                    {
+                                        tiles_map[i].selected = false;
+                                        has_selected = false;
+                                    }
+                                    else    
+                                        tiles_map[i].selected = true;
+                                }
+                                else
+                                    tiles_map[i].selected = false;
+                            }
+
+                            if(!(aux_position.x < ortho_value.x))
+                                has_selected = false;
                             break;
                     }
                 case sf::Event::KeyPressed:
@@ -232,8 +261,14 @@ int main()
                     break;    
             }
         }
-
+        
+        glViewport(0, 0, window_size.x / 2, window_size.y);
+        opengl_init();
         draw_context();
+
+        glViewport(window_size.x / 2, 0, window_size.x, window_size.y);
+        opengl_init();
+        draw_perspective(); 
         window.display();
     }
 
