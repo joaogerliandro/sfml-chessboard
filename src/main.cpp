@@ -48,7 +48,7 @@ sf::ContextSettings gl_settings()
 
 void ortho_axis()
 {
-    glColor3f(1, 0, 0);
+    glColor3f(1, 1, 0);
     glBegin(GL_LINES);
         glVertex3f(ortho_value.x / 2,  ortho_value.y, 0); 
         glVertex3f(ortho_value.x / 2, 0, 0); 
@@ -109,28 +109,9 @@ void drawn_tiles()
     tiles_maped = true;
 }
 
-void draw_context()
-{
-    glClearColor(1, 1, 1, 1);
-
-    drawn_tiles();
-
-    /* ortho_axis(); */
-}
-
-void draw_perspective()
-{
-    glClearColor(0.25, 0.25, 0.25, 1);
-
-}
-
-void opengl_init()
+void opengl_2d_init()
 {
     glEnable(GL_TEXTURE_2D);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glPointSize(10.f);
-    glLineWidth(5.f);
-
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(
@@ -138,6 +119,49 @@ void opengl_init()
             0, ortho_value.y,
             -ortho_value.z, ortho_value.z
     );
+}
+
+void opengl_3d_init()
+{
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glFrustum(0, 8,
+              0, 8,
+              2, 16);
+    
+    glMatrixMode(GL_MODELVIEW);
+};
+
+void drawn_2d_context()
+{
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glPointSize(10.f);
+    glLineWidth(5.f);
+
+    glClearColor(1, 1, 1, 1);
+
+    drawn_tiles();
+
+    ortho_axis();
+}
+
+void drawn_3d_context()
+{
+    glClearColor(0.25, 0.25, 0.25, 1);
+    glLoadIdentity();
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    glBegin(GL_QUADS);
+       
+        glColor3f(1, 0, 0);  
+        //Face 1°
+        glVertex3f(2, 2, -4);
+        glVertex3f(4, 2, -4);
+        glVertex3f(4, 4, -4);
+        glVertex3f(2, 4, -4);
+
+    glEnd();
 }
 
 void print_tiles_map()
@@ -175,7 +199,6 @@ int main()
     window.setActive(true);
 
     ortho_value = glm::vec3(8, 8, 1);
-    opengl_init();
 
     bool run = true;
     //while(window.isOpen())
@@ -247,15 +270,9 @@ int main()
                         case sf::Keyboard::F11:
                             fullscreen = !(fullscreen);
                             if(fullscreen)
-                            {
                                 window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen);
-                                opengl_init();
-                            }
                             else
-                            {
                                 window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default);
-                                opengl_init();
-                            }
                             break;
                     }
                     break;    
@@ -263,12 +280,12 @@ int main()
         }
         
         glViewport(0, 0, window_size.x / 2, window_size.y);
-        opengl_init();
-        draw_context();
+        opengl_2d_init();
+        drawn_2d_context();
 
         glViewport(window_size.x / 2, 0, window_size.x, window_size.y);
-        opengl_init();
-        draw_perspective(); 
+        opengl_3d_init();
+        drawn_3d_context(); 
         window.display();
     }
 
