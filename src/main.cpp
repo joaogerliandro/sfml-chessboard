@@ -1,12 +1,12 @@
 #include <iostream>
 #include <vector>
-#include <cmath>
 #include <string>
 
-#include <SFML/Window.hpp>
+#include <SFML/Window/Event.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/OpenGL.hpp>
-#include <glm/glm.hpp>
+
+#include <glm/ext.hpp>
 
 typedef struct tile
 {
@@ -19,20 +19,29 @@ typedef struct tile
               has_object = false;
 }Tile;
 
+typedef struct cam
+{
+    glm::vec3 eye,
+              at,
+              up;
+}Camera;
+
+Camera main_cam;
+
 std::vector<Tile> tiles_map;
-
-glm::vec2 aux_tile_len, aux_position, selected_tile;
-glm::vec3 ortho_value,
-          tile_len;
-
-sf::Vector2i mouse_position, window_size;
-sf::Vector2f world_size, world_position;
-
 
 bool fullscreen    = false,
      tiles_maped   = false,
      has_selected  = false;
 std::string title_name("OpenGL Chessboard");
+
+glm::vec2 aux_tile_len, aux_position, selected_tile;
+glm::vec3 ortho_value,
+          tile_len;
+glm::vec4 highlight_color(0.0, 0.8, 0.0 , 0.2);
+
+sf::Vector2i mouse_position, window_size;
+sf::Vector2f world_size, world_position;
 
 sf::ContextSettings gl_settings()
 {
@@ -46,23 +55,50 @@ sf::ContextSettings gl_settings()
     return settings;
 }
 
-void ortho_axis()
+void ortho_axis(bool lever)
 {
-    glColor3f(1, 1, 0);
-    glBegin(GL_LINES);
-        glVertex3f(ortho_value.x / 2,  ortho_value.y, 0); 
-        glVertex3f(ortho_value.x / 2, 0, 0); 
+    if(!lever)
+        return;
 
+
+    glBegin(GL_LINES);
+        //Eixo x em vermelho
+        glColor3f(1.0, 0.0, 0.0);
         glVertex3f(0, ortho_value.y / 2, 0);
         glVertex3f(ortho_value.x, ortho_value.y / 2, 0); 
+        
+        //Eixo y em verde
+        glColor3f(0.0, 1.0, 0.0);  
+        glVertex3f(ortho_value.x / 2,  ortho_value.y, 0); 
+        glVertex3f(ortho_value.x / 2, 0, 0); 
+    glEnd();
+}
+
+void fustrum_axis(bool lever)
+{
+    if(!lever)
+        return;
+   
+    glBegin(GL_LINES);
+        //Eixo x em vermelho
+        glColor3f(1.0, 0.0, 0.0);
+        glVertex3f( 0.0, 0.0, 0.0);
+        glVertex3f(10.0, 0.0, 0.0);
+
+        //Eixo y em verde
+        glColor3f(0.0, 1.0, 0.0);
+        glVertex3f( 0.0, 0.0, 0.0);
+        glVertex3f( 0.0,10.0, 0.0);
+
+        //Eixo z em azul
+        glColor3f(0.0, 0.0, 1.0);
+        glVertex3f( 0.0, 0.0, 0.0);
+        glVertex3f( 0.0, 0.0,10.0);
     glEnd();
 }
 
 void drawn_tiles()
 {
-    if(ortho_value.x < 2.0 || ortho_value.y < 2.0)
-        return;
-
     Tile aux_obj;
 
     for(Tile tile : tiles_map)
@@ -82,7 +118,7 @@ void drawn_tiles()
                 glColor3f(1, 1, 1);
 
             if(x == selected_tile.x && y == selected_tile.y && has_selected)
-                glColor4f(1, 0, 0, 0.03);
+                glColor4fv(glm::value_ptr(highlight_color));
 
             glBegin(GL_QUADS);
                 glVertex3f(x, ortho_value.y - y, ortho_value.z); //A: x, y
@@ -98,7 +134,7 @@ void drawn_tiles()
             {
                 aux_obj.side_x = glm::vec2(x, x + 1);
                 aux_obj.side_y = glm::vec2(ortho_value.y - y, ortho_value.y - (y + 1));
-    
+
                 aux_obj.world_cords = glm::vec2(x, y);
 
                 tiles_map.push_back(aux_obj);
@@ -109,59 +145,97 @@ void drawn_tiles()
     tiles_maped = true;
 }
 
+void drawn_3d_board()
+{
+    for(int x = 0; x < ortho_value.x; x++)
+    {
+        for(int z = 0; z < ortho_value.y; z++)
+        {
+            if((x + z) % 2 == 0)
+                glColor3f(0, 0, 0);
+            else
+                glColor3f(1, 1, 1);
+
+            if(x == selected_tile.x && z == selected_tile.y && has_selected)
+                glColor4fv(glm::value_ptr(highlight_color));
+
+            glBegin(GL_QUADS);
+                glVertex3f(x    , 0, z); //A: x, y
+                glVertex3f(x + 1, 0, z); //B: x+len, y
+                glVertex3f(x + 1, 0, z + 1); //D: x+len, y+len
+                glVertex3f(x    , 0, z + 1); //C: x, y+len
+            glEnd();
+        }
+    }
+}
+
+void opengl_init()
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glPointSize(10.f);
+    glLineWidth(5.f);
+}
+
 void opengl_2d_init()
 {
-    glEnable(GL_TEXTURE_2D);
+    glm::mat4 idt_mat = glm::mat4(1.0);
+    glLoadMatrixf(glm::value_ptr(idt_mat));
+
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(
-            0, ortho_value.x,
-            0, ortho_value.y,
-            -ortho_value.z, ortho_value.z
+    glm::mat4 proj_mat = glm::ortho(
+        0.f, ortho_value.x,
+        0.f, ortho_value.y,
+        -ortho_value.z, ortho_value.z
     );
+    glLoadMatrixf(glm::value_ptr(proj_mat));
 }
 
 void opengl_3d_init()
 {
+    glm::mat4 idt_mat = glm::mat4(1.0);
+    glLoadMatrixf(glm::value_ptr(idt_mat));
+
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(0, 8,
-              0, 8,
-              2, 16);
-    
-    glMatrixMode(GL_MODELVIEW);
-};
+    glm::mat4 proj_mat = glm::frustum(
+        -1.f, 1.f,
+        -1.f, 1.f,
+         1.f, 100.f
+    );
+
+    /* int32_t aspect_ratio = (float) window_size.x / (float) window_size.y;
+    glm::mat4 proj_mat = glm::perspective(60, aspect_ratio, 2, 100); */
+
+    glLoadMatrixf(glm::value_ptr(proj_mat));
+}; 
 
 void drawn_2d_context()
 {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glPointSize(10.f);
-    glLineWidth(5.f);
-
-    glClearColor(1, 1, 1, 1);
+    glMatrixMode(GL_MODELVIEW);
 
     drawn_tiles();
 
-    ortho_axis();
+    ortho_axis(true);
 }
 
-void drawn_3d_context()
+void drawn_3d_context(int z)
 {
-    glClearColor(0.25, 0.25, 0.25, 1);
-    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    
+    main_cam = {
+        .eye = glm::vec3(4, 4, z),
+        .at =  glm::vec3(0, 0, 0),
+        .up =  glm::vec3(0, 1, 0)
+    };
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glm::mat4 view_mat = glm::lookAt(main_cam.eye, main_cam.at, main_cam.up);
+    glLoadMatrixf(glm::value_ptr(view_mat));
 
-    glBegin(GL_QUADS);
-       
-        glColor3f(1, 0, 0);  
-        //Face 1°
-        glVertex3f(2, 2, -4);
-        glVertex3f(4, 2, -4);
-        glVertex3f(4, 4, -4);
-        glVertex3f(2, 4, -4);
+    drawn_3d_board();
 
-    glEnd();
+    fustrum_axis(true);
 }
 
 void print_tiles_map()
@@ -179,16 +253,13 @@ void print_tiles_map()
         std::cout << "World Cords -> X : ["     << tile.world_cords.x 
                   << ", "                       << tile.world_cords.y
                   << "] \t";
-
-        if(tile.selected)
-            std::cout << "Selected: True" << std::endl;
-        else
-            std::cout << "Selected: False" << std::endl;
     }
 
     std::cout << "TilesMap Len: "  << tiles_map.size() 
               << std::endl;
 }
+
+int z = 4;
 
 int main()
 {
@@ -203,8 +274,10 @@ int main()
     bool run = true;
     //while(window.isOpen())
     while(run)
-    {  
+    {   
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.25, 0.25, 0.25, 1);
+        opengl_init();
         
         sf::Event event;
         while(window.pollEvent(event))
@@ -267,6 +340,12 @@ int main()
                         case sf::Keyboard::D:
                             print_tiles_map();
                             break;
+                        case sf::Keyboard::E:
+                            z++;
+                            break;
+                        case sf::Keyboard::Q:
+                            z--;
+                            break;
                         case sf::Keyboard::F11:
                             fullscreen = !(fullscreen);
                             if(fullscreen)
@@ -278,14 +357,15 @@ int main()
                     break;    
             }
         }
-        
-        glViewport(0, 0, window_size.x / 2, window_size.y);
+
+        glViewport(0, 0, window_size.x / 2 , window_size.y);
         opengl_2d_init();
         drawn_2d_context();
 
-        glViewport(window_size.x / 2, 0, window_size.x, window_size.y);
+        glViewport(window_size.x / 2, 0, window_size.x / 2 , window_size.y);
         opengl_3d_init();
-        drawn_3d_context(); 
+        drawn_3d_context(z);
+        
         window.display();
     }
 
