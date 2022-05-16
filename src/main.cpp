@@ -21,6 +21,7 @@ typedef struct tile
     glm::vec2 world_cords;
 
     bool      selected   = false,
+              focused    = false,
               has_object = false;
 }Tile;
 
@@ -39,6 +40,7 @@ typedef struct cam
 }Camera;
 
 Camera main_cam;
+Object cam_obj;
 
 std::vector<Tile>   tiles_map;
 std::vector<Object> object_list;
@@ -50,9 +52,11 @@ bool fullscreen    = false,
 std::string title_name("OpenGL Chessboard");
 
 glm::vec2 aux_tile_len , aux_position;
-glm::vec3 ortho_value  , tile_len, selected_tile, 
+glm::vec3 ortho_value  , tile_len, selected_tile,
           focused_object = glm::vec3(8, 1, 8);
-glm::vec4 highlight_color(0.0, 0.8, 0.0 , 0.2);
+glm::vec4 highlight_color(0.0, 0.8, 0.0 , 0.2),
+          focused_color  (1.0, 0.8, 0.0,  0.2),
+          track_color    (0.0, 0.0, 0.8, 0.2);
 
 sf::Vector2i mouse_position, window_size;
 sf::Vector2f world_size    , world_position;
@@ -156,11 +160,19 @@ void drawn_tiles()
     Tile aux_obj;
 
     for(int32_t i = 0; i < tiles_map.size(); i++)
+    {
         if(tiles_map[i].selected)
         {
             has_selected = true;
             selected_tile = glm::vec3(tiles_map[i].world_cords.x, tiles_map[i].world_cords.y, i);
         }
+
+        if(tiles_map[i].focused)
+        {
+            has_focused = true;
+            focused_object = glm::vec3(tiles_map[i].world_cords.x, 1.5, tiles_map[i].world_cords.y);
+        }
+    }
 
     for(int x = 0; x < ortho_value.x; x++)
     {
@@ -171,8 +183,16 @@ void drawn_tiles()
             else
                 glColor3f(1, 1, 1);
 
+            if(x == focused_object.x && y == focused_object.z && has_focused)
+                glColor4fv(glm::value_ptr(focused_color));
+
             if(x == selected_tile.x && y == selected_tile.y && has_selected)
                 glColor4fv(glm::value_ptr(highlight_color));
+
+            if(x == selected_tile.x  && y == selected_tile.y  &&
+               x == focused_object.x && y == focused_object.z && 
+               has_focused           && has_selected)
+                glColor4fv(glm::value_ptr(track_color));
 
             glBegin(GL_QUADS);
                 glVertex3f(x, ortho_value.y - y, ortho_value.z); //A: x, y
@@ -215,8 +235,16 @@ void drawn_3d_board()
             else
                 glColor3f(1, 1, 1);
 
+            if(x == focused_object.x && z == focused_object.z && has_focused)
+                glColor4fv(glm::value_ptr(focused_color));
+
             if(x == selected_tile.x && z == selected_tile.y && has_selected)
                 glColor4fv(glm::value_ptr(highlight_color));
+
+            if(x == selected_tile.x  && z == selected_tile.y  &&
+               x == focused_object.x && z == focused_object.z && 
+               has_focused           && has_selected)
+                glColor4fv(glm::value_ptr(track_color));
 
             glBegin(GL_QUADS);
                 glVertex3f(x    , 0, z); //A: x, y
@@ -285,7 +313,7 @@ void drawn_3d_context()
 {
     glMatrixMode(GL_MODELVIEW);
 
-    main_cam.eye = object_list[0].world_cords;
+    main_cam.eye = cam_obj.world_cords;
     main_cam.at  = focused_object;
 
     glm::mat4 view_mat = glm::lookAt(main_cam.eye, main_cam.at, main_cam.up);
@@ -317,6 +345,9 @@ void print_tiles_map()
         std::cout << "Selected : "     << tile.selected
                   << "\t";
 
+        std::cout << "Focused : "     << tile.focused
+                  << "\t";
+
         std::cout << "Has Object : "   << tile.has_object
                   << "\t"            << std::endl;
     }
@@ -342,11 +373,8 @@ int main()
         .up  =  glm::vec3(0, 1, 0)
     }; //Standard cam config
 
-    Object cam_obj =
-    {
-        .world_cords = main_cam.eye,
-        .obj_color  =  glm::vec4(0.8, 0.8, 0.8, 1)
-    };
+    cam_obj.world_cords = main_cam.eye;
+    cam_obj.obj_color  =  glm::vec4(0.8, 0.8, 0.8, 1);
 
     object_list.push_back(cam_obj);
 
@@ -434,25 +462,37 @@ int main()
                                       << ", " << aux_position.y
                                       << "]"  << std::endl;
 
-                            /* for(int32_t i = 0; i < tiles_map.size(); i++)
+                            for(int32_t i = 0; i < tiles_map.size(); i++)
                             {
-                                if(tiles_map[i].world_cords.x == aux_position.x && tiles_map[i].world_cords.y == aux_position.y)
-                                {
-                                    if(tiles_map[i].selected)
+                                if(tiles_map[i].world_cords.x == aux_position.x && 
+                                   tiles_map[i].world_cords.y == aux_position.y &&
+                                   tiles_map[i].has_object)
+                                {                            
+                                    if(tiles_map[i].focused)
                                     {
-                                        tiles_map[i].selected = false;
-                                        has_selected = false;
+                                        tiles_map[i].focused = false;
+                                        has_focused = false;
                                     }
                                     else    
-                                        tiles_map[i].selected = true;
+                                        tiles_map[i].focused = true;
+
+                                    if(aux_position.x == cam_obj.world_cords.x && aux_position.y == cam_obj.world_cords.z)
+                                    {
+                                        tiles_map[i].focused = false;
+                                        has_focused = false;
+                                    }
                                 }
                                 else
-                                    tiles_map[i].selected = false;
+                                    tiles_map[i].focused = false;
+                                    
                             }
 
                             if(!(aux_position.x < ortho_value.x))
-                                has_selected = false; */
-                            focused_object = glm::vec3(aux_position.x, 1.5, aux_position.y);
+                                has_focused = false; 
+
+                            if(!has_focused)
+                                focused_object = glm::vec3(8, 1, 8);
+
                             break;
                     }
                 case sf::Event::KeyPressed:
@@ -479,17 +519,27 @@ int main()
                                             if(tiles_map[j].world_cords.x == object_list[i].world_cords.x + 1 &&
                                                tiles_map[j].world_cords.y == object_list[i].world_cords.z     &&
                                                !tiles_map[j].has_object)
-                                            {
+                                            {   
                                                 tiles_map[selected_tile.z].selected   = false;
                                                 tiles_map[selected_tile.z].has_object = false;
                                                 
                                                 tiles_map[j].selected   = true;
                                                 tiles_map[j].has_object = true;
+
+                                                if(tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   tiles_map[selected_tile.z].world_cords.y == focused_object.z
+                                                )
+                                                {
+                                                    tiles_map[selected_tile.z].focused   = false;
+                                                    tiles_map[j].focused                 = true;
+                                                    focused_object.x++;
+                                                }
                                             }
                                         }
 
                                         if(!tiles_map[selected_tile.z].selected)
                                             object_list[i].world_cords.x++;
+                                
                                     }
                                 }
                             }
@@ -515,11 +565,21 @@ int main()
                                                 
                                                 tiles_map[j].selected   = true;
                                                 tiles_map[j].has_object = true;
+
+                                                if(tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   tiles_map[selected_tile.z].world_cords.y == focused_object.z
+                                                )
+                                                {
+                                                    tiles_map[selected_tile.z].focused   = false;
+                                                    tiles_map[j].focused                 = true;
+                                                    focused_object.x--;
+                                                }
                                             }
                                         }
 
                                         if(!tiles_map[selected_tile.z].selected)
                                             object_list[i].world_cords.x--;
+
                                     }
                                 }
                             }
@@ -545,11 +605,21 @@ int main()
                                                 
                                                 tiles_map[j].selected   = true;
                                                 tiles_map[j].has_object = true;
+
+                                                if(tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   tiles_map[selected_tile.z].world_cords.y == focused_object.z
+                                                )
+                                                {
+                                                    tiles_map[selected_tile.z].focused   = false;
+                                                    tiles_map[j].focused                 = true;
+                                                    focused_object.z++;
+                                                }
                                             }
                                         }
 
                                         if(!tiles_map[selected_tile.z].selected)
                                             object_list[i].world_cords.z++;
+
                                     }
                                 }
                             }
@@ -575,11 +645,21 @@ int main()
                                                 
                                                 tiles_map[j].selected   = true;
                                                 tiles_map[j].has_object = true;
+
+                                                if(tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   tiles_map[selected_tile.z].world_cords.y == focused_object.z
+                                                )
+                                                {
+                                                    tiles_map[selected_tile.z].focused   = false;
+                                                    tiles_map[j].focused                 = true;
+                                                    focused_object.z--;
+                                                }
                                             }
                                         }
 
                                         if(!tiles_map[selected_tile.z].selected)
                                             object_list[i].world_cords.z--;
+
                                     }
                                 }
                             }
@@ -595,6 +675,8 @@ int main()
                     break;    
             }
         }
+
+        cam_obj.world_cords = object_list[0].world_cords;
 
         glViewport(0, 0, window_size.x / 2 , window_size.y);
         opengl_2d_init();
