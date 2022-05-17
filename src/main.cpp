@@ -1,6 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <cmath>
 
 #include <SFML/Window/Event.hpp>
@@ -13,6 +16,13 @@
 #define ANGLE  3.141 * 2.f / SIDES
 #define RADIUS 0.35
 
+enum OBJECT_TYPE : int32_t
+{
+    CUBE,
+    PYRAMID,
+    PRISM,
+    PAWN
+};
 typedef struct tile
 {
     glm::vec2 side_x;
@@ -28,8 +38,11 @@ typedef struct tile
 typedef struct obj
 {
     glm::vec3 world_cords;
-
     glm::vec4 obj_color;
+
+    std::vector<glm::vec3> polygon_vertexs;
+
+    OBJECT_TYPE obj_type;
 }Object;
 
 typedef struct cam
@@ -40,7 +53,7 @@ typedef struct cam
 }Camera;
 
 Camera main_cam;
-Object cam_obj;
+Object cam_obj, aux_obj;
 
 std::vector<Tile>   tiles_map;
 std::vector<Object> object_list;
@@ -73,6 +86,90 @@ sf::ContextSettings gl_settings()
     return settings;
 }
 
+std::vector<glm::vec3> obj_loader(const char* obj_path)
+{
+    //Vertexs
+    std::vector<glm::fvec3> vertexs_positions;
+    //Faces
+    std::vector<GLint>      vertexs_indicies;
+    
+    //Vertexs e temp array
+    std::vector<glm::vec3>  polygon_vertexs;
+
+    std::stringstream str_stream;
+    std::ifstream     in_file(obj_path);
+
+    std::string       line = "",
+                      line_prefix = "";
+
+    //Aux atributes 
+    GLint     aux_glint = 0;
+    glm::vec2 aux_vec2; 
+    glm::vec3 aux_vec3;
+
+    if(!in_file.is_open())
+    {
+        std::cout << std::filesystem::current_path() << std::endl;
+        throw "ERRO: Can't open the file !";
+    }
+
+    while(std::getline(in_file, line))
+    {
+        str_stream.clear();
+        str_stream.str(line);
+        str_stream >> line_prefix;
+
+        if(line_prefix == "v")
+        {
+            str_stream >> aux_vec3.x >> aux_vec3.y >> aux_vec3.z;
+            vertexs_positions.push_back(aux_vec3);
+        }
+        else if(line_prefix == "f")
+        {
+            int32_t counter = 0;
+            while(str_stream >> aux_glint)
+            {
+                if(counter == 0)
+                    vertexs_indicies.push_back(aux_glint);
+                else if(counter == 1)
+                {
+                    //Texture Vertex indices    
+                }                    
+                else if(counter == 2)
+                {
+                    //Normal Vertex indices
+                }
+
+                if(str_stream.peek() == '/')
+                {
+                    counter++;
+                    str_stream.ignore(1, '/');
+                }
+                else if(str_stream.peek() == ' ')
+                {
+                    counter++;
+                    str_stream.ignore(1, ' ');
+                }
+
+                if(counter > 2)
+                    counter = 0;
+
+            }
+        }
+
+        polygon_vertexs.resize(
+            vertexs_indicies.size(),
+            glm::vec3()                    
+        );
+
+        for(size_t i = 0; i < polygon_vertexs.size(); i++)
+            polygon_vertexs[i] = vertexs_positions[vertexs_indicies[i] - 1];
+
+    }
+
+    return polygon_vertexs;
+}
+
 void ortho_axis(bool lever)
 {
     if(!lever)
@@ -92,7 +189,7 @@ void ortho_axis(bool lever)
     glEnd();
 }
 
-void fustrum_axis(bool lever)
+void frustum_axis(bool lever)
 {
     if(!lever)
         return;
@@ -113,46 +210,6 @@ void fustrum_axis(bool lever)
         glVertex3f( 0.0, 0.0, 0.0);
         glVertex3f( 0.0, 0.0,10.0);
     glEnd();
-}
-
-void drawn_pins()
-{
-    if(object_list.empty())
-        return;
-
-    glm::vec2 center_point;
-
-    for(int32_t i = 0; i < tiles_map.size(); i++)
-    {
-        for(Object obj : object_list)
-            if(obj.world_cords.x == tiles_map[i].world_cords.x &&
-               obj.world_cords.z == tiles_map[i].world_cords.y)
-            {
-                tiles_map[i].has_object = true;
-                center_point = glm::vec2((tiles_map[i].side_x.x + tiles_map[i].side_x.y) / 2,
-                                          tiles_map[i].side_y.x - 0.5);
-
-                glColor4fv(glm::value_ptr(obj.obj_color));
-                glBegin(GL_POLYGON);
-                    for(int32_t i = 0; i <= 360; i++)
-                    {
-                        glVertex2f(center_point.x + RADIUS * cosf(ANGLE * i),
-                                   center_point.y + RADIUS * sinf(ANGLE * i));
-                        
-                    }
-                glEnd();
-
-                glColor3f(0, 0, 0);
-                glBegin(GL_LINE_LOOP);
-                    for(int32_t i = 0; i <= 360; i++)
-                    {
-                        glVertex2f(center_point.x + RADIUS * cosf(ANGLE * i),
-                                   center_point.y + RADIUS * sinf(ANGLE * i));
-                        
-                    }
-                glEnd();
-            }
-    }
 }
 
 void drawn_tiles()
@@ -219,11 +276,6 @@ void drawn_tiles()
     tiles_maped = true;
 }
 
-void drawn_objs()
-{
-
-}
-
 void drawn_3d_board()
 {
     for(int x = 0; x < ortho_value.x; x++)
@@ -256,6 +308,82 @@ void drawn_3d_board()
     }
 }
 
+void drawn_pins()
+{
+    if(object_list.empty())
+        return;
+
+    glm::vec2 center_point;
+
+    for(int32_t i = 0; i < tiles_map.size(); i++)
+    {
+        for(Object obj : object_list)
+            if(obj.world_cords.x == tiles_map[i].world_cords.x &&
+               obj.world_cords.z == tiles_map[i].world_cords.y)
+            {
+                tiles_map[i].has_object = true;
+                center_point = glm::vec2((tiles_map[i].side_x.x + tiles_map[i].side_x.y) / 2,
+                                          tiles_map[i].side_y.x - 0.5);
+
+                glColor4fv(glm::value_ptr(obj.obj_color));
+                glBegin(GL_POLYGON);
+                    for(int32_t i = 0; i <= 360; i++)
+                    {
+                        glVertex2f(center_point.x + RADIUS * cosf(ANGLE * i),
+                                   center_point.y + RADIUS * sinf(ANGLE * i));
+                        
+                    }
+                glEnd();
+
+                glColor3f(0, 0, 0);
+                glBegin(GL_LINE_LOOP);
+                    for(int32_t i = 0; i <= 360; i++)
+                    {
+                        glVertex2f(center_point.x + RADIUS * cosf(ANGLE * i),
+                                   center_point.y + RADIUS * sinf(ANGLE * i));
+                        
+                    }
+                glEnd();
+            }
+    }
+}
+
+void drawn_objs()
+{
+    if(object_list.empty())
+        return;
+    
+    for(int32_t i = 0; i < tiles_map.size(); i++)
+    {
+        for(Object obj : object_list)
+            if(obj.world_cords.x == tiles_map[i].world_cords.x &&
+               obj.world_cords.z == tiles_map[i].world_cords.y)
+            {
+                glColor4fv(glm::value_ptr(obj.obj_color));
+                glBegin(GL_QUADS);
+                    for(glm::vec3 vertex : obj.polygon_vertexs)
+                        glVertex3f(
+                            vertex.x + obj.world_cords.x,
+                            vertex.z,
+                            vertex.y + obj.world_cords.z
+                        );
+                glEnd();
+
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                glColor4f(0.0, 0.0, 0.0, 1.0);
+                glBegin(GL_QUADS);
+                    for(glm::vec3 vertex : obj.polygon_vertexs)
+                        glVertex3f(
+                            vertex.x + obj.world_cords.x,
+                            vertex.z,
+                            vertex.y + obj.world_cords.z
+                        );
+                glEnd();
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+    }
+}
+
 void opengl_init()
 {
     glEnable(GL_BLEND);
@@ -268,6 +396,7 @@ void opengl_init()
 
 void opengl_2d_init()
 {
+    glDisable(GL_DEPTH_TEST);
     glm::mat4 idt_mat = glm::mat4(1.0);
     glLoadMatrixf(glm::value_ptr(idt_mat));
 
@@ -282,14 +411,15 @@ void opengl_2d_init()
 
 void opengl_3d_init()
 {
+    glEnable(GL_DEPTH_TEST);
     glm::mat4 idt_mat = glm::mat4(1.0);
     glLoadMatrixf(glm::value_ptr(idt_mat));
 
     glMatrixMode(GL_PROJECTION);
     glm::mat4 proj_mat = glm::frustum(
-        -1.f, 1.f,
-        -1.f, 1.f,
-         1.f, 100.f
+        -0.1f,  0.1f,
+        -0.1f,  0.1f,
+         0.1f,  50.f
     );
 
     /* int32_t aspect_ratio = (float) window_size.x / (float) window_size.y;
@@ -321,9 +451,9 @@ void drawn_3d_context()
 
     drawn_3d_board();
 
-    drawn_objs();
+    frustum_axis(true);
 
-    fustrum_axis(true);
+    drawn_objs();
 }
 
 void print_tiles_map()
@@ -374,17 +504,9 @@ int main()
     }; //Standard cam config
 
     cam_obj.world_cords = main_cam.eye;
-    cam_obj.obj_color  =  glm::vec4(0.8, 0.8, 0.8, 1);
+    cam_obj.obj_color   =  glm::vec4(0.8, 0.8, 0.8, 1);
 
     object_list.push_back(cam_obj);
-
-    Object teste =
-    {
-        .world_cords = glm::vec3(1, 0, 1),
-        .obj_color  =  glm::vec4(1, 0, 0, 1)
-    };
-    object_list.push_back(teste);
-
 
     bool run = true;
     //while(window.isOpen())
@@ -503,6 +625,30 @@ int main()
                             break;
                         case sf::Keyboard::D:
                             print_tiles_map();
+                            break;
+                        case sf::Keyboard::R:
+                            aux_obj.world_cords = glm::vec3(
+                                rand() % 8,
+                                1.5,
+                                rand() % 8
+                            );
+
+                            aux_obj.obj_color = glm::vec4(
+                                (rand() % 255) / 255.f,
+                                (rand() % 255) / 255.f,
+                                (rand() % 255) / 255.f,
+                                1.0
+                            );
+
+                            aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/cube.obj");
+                            
+                            for(int32_t i = 0; i < tiles_map.size(); i++)
+                                if(tiles_map[i].world_cords.x == aux_obj.world_cords.x &&
+                                   tiles_map[i].world_cords.y == aux_obj.world_cords.z &&
+                                   !tiles_map[i].has_object   && object_list.size() < tiles_map.size() - 1
+                                )
+
+                                    object_list.push_back(aux_obj);
                             break;
                         case sf::Keyboard::Right:
                             for(int32_t i = 0; i < object_list.size(); i++)
