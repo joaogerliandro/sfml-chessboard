@@ -20,13 +20,12 @@ enum OBJECT_TYPE : int32_t
 {
     CUBE,
     PYRAMID,
-    PRISM,
-    PAWN
+    ETHER,
+    CONE
 };
 typedef struct tile
 {
-    glm::vec2 side_x;
-    glm::vec2 side_y;
+    glm::vec2 side_x, side_y;
 
     glm::vec2 world_cords;
 
@@ -64,15 +63,19 @@ bool fullscreen    = false,
      has_focused   = false;
 std::string title_name("OpenGL Chessboard");
 
-glm::vec2 aux_tile_len , aux_position;
+glm::vec2 aux_position;
+
 glm::vec3 ortho_value  , tile_len, selected_tile,
           focused_object = glm::vec3(8, 1, 8);
+
 glm::vec4 highlight_color(0.0, 0.8, 0.0 , 0.2),
           focused_color  (1.0, 0.8, 0.0,  0.2),
           track_color    (0.0, 0.0, 0.8, 0.2);
 
 sf::Vector2i mouse_position, window_size;
 sf::Vector2f world_size    , world_position;
+
+sf::RenderWindow window;
 
 sf::ContextSettings gl_settings()
 {
@@ -99,7 +102,7 @@ std::vector<glm::vec3> obj_loader(const char* obj_path)
     std::stringstream str_stream;
     std::ifstream     in_file(obj_path);
 
-    std::string       line = "",
+    std::string       line        = "",
                       line_prefix = "";
 
     //Aux atributes 
@@ -131,14 +134,6 @@ std::vector<glm::vec3> obj_loader(const char* obj_path)
             {
                 if(counter == 0)
                     vertexs_indicies.push_back(aux_glint);
-                else if(counter == 1)
-                {
-                    //Texture Vertex indices    
-                }                    
-                else if(counter == 2)
-                {
-                    //Normal Vertex indices
-                }
 
                 if(str_stream.peek() == '/')
                 {
@@ -153,7 +148,6 @@ std::vector<glm::vec3> obj_loader(const char* obj_path)
 
                 if(counter > 2)
                     counter = 0;
-
             }
         }
 
@@ -174,7 +168,6 @@ void ortho_axis(bool lever)
 {
     if(!lever)
         return;
-
 
     glBegin(GL_LINES);
         //Eixo x em vermelho
@@ -227,7 +220,7 @@ void drawn_tiles()
         if(tiles_map[i].focused)
         {
             has_focused = true;
-            focused_object = glm::vec3(tiles_map[i].world_cords.x, 1.5, tiles_map[i].world_cords.y);
+            focused_object = glm::vec3(tiles_map[i].world_cords.x, 1.0, tiles_map[i].world_cords.y);
         }
     }
 
@@ -263,11 +256,14 @@ void drawn_tiles()
 
             if(!tiles_maped)
             {
-                aux_obj.side_x = glm::vec2(x, x + 1);
-                aux_obj.side_y = glm::vec2(ortho_value.y - y, ortho_value.y - (y + 1));
+                aux_obj.side_x = glm::vec2(
+                    x , x + 1
+                );
+                aux_obj.side_y = glm::vec2(
+                    ortho_value.y - y , ortho_value.y - (y + 1)
+                );
 
                 aux_obj.world_cords = glm::vec2(x, y);
-
                 tiles_map.push_back(aux_obj);
             } 
         }
@@ -325,25 +321,29 @@ void drawn_pins()
                 center_point = glm::vec2((tiles_map[i].side_x.x + tiles_map[i].side_x.y) / 2,
                                           tiles_map[i].side_y.x - 0.5);
 
+                glTranslatef(center_point.x, center_point.y, 0);
+
                 glColor4fv(glm::value_ptr(obj.obj_color));
                 glBegin(GL_POLYGON);
                     for(int32_t i = 0; i <= 360; i++)
                     {
-                        glVertex2f(center_point.x + RADIUS * cosf(ANGLE * i),
-                                   center_point.y + RADIUS * sinf(ANGLE * i));
+                        glVertex2f(RADIUS * cosf(ANGLE * i),
+                                   RADIUS * sinf(ANGLE * i));
                         
                     }
                 glEnd();
 
-                glColor3f(0, 0, 0);
+                glColor4f(0, 0, 0, 1);
                 glBegin(GL_LINE_LOOP);
                     for(int32_t i = 0; i <= 360; i++)
                     {
-                        glVertex2f(center_point.x + RADIUS * cosf(ANGLE * i),
-                                   center_point.y + RADIUS * sinf(ANGLE * i));
+                        glVertex2f(RADIUS * cosf(ANGLE * i),
+                                   RADIUS * sinf(ANGLE * i));
                         
                     }
                 glEnd();
+
+                glTranslatef(-center_point.x, -center_point.y, 0);
             }
     }
 }
@@ -352,34 +352,49 @@ void drawn_objs()
 {
     if(object_list.empty())
         return;
-    
-    for(int32_t i = 0; i < tiles_map.size(); i++)
+
+    int32_t polygon_type;
+
+    for(Tile tile : tiles_map)
     {
         for(Object obj : object_list)
-            if(obj.world_cords.x == tiles_map[i].world_cords.x &&
-               obj.world_cords.z == tiles_map[i].world_cords.y)
+            if(obj.world_cords.x == tile.world_cords.x &&
+               obj.world_cords.z == tile.world_cords.y)
             {
+                if(obj.obj_type == CUBE)
+                    polygon_type = GL_QUADS;
+                else
+                    polygon_type = GL_POLYGON;
+                
+                glTranslatef(tile.world_cords.x + 0.5 , 0.5, tile.world_cords.y + 0.5);
+                glScalef(0.8, 0.8, 0.8);
+                glRotatef(-90, 1.0, 0.0, 0.0);
+                
                 glColor4fv(glm::value_ptr(obj.obj_color));
-                glBegin(GL_QUADS);
+                glBegin(polygon_type);
                     for(glm::vec3 vertex : obj.polygon_vertexs)
                         glVertex3f(
-                            vertex.x + obj.world_cords.x,
+                            vertex.x,
                             vertex.z,
-                            vertex.y + obj.world_cords.z
+                            vertex.y
                         );
                 glEnd();
 
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                 glColor4f(0.0, 0.0, 0.0, 1.0);
-                glBegin(GL_QUADS);
+                glBegin(polygon_type);
                     for(glm::vec3 vertex : obj.polygon_vertexs)
                         glVertex3f(
-                            vertex.x + obj.world_cords.x,
+                            vertex.x,
                             vertex.z,
-                            vertex.y + obj.world_cords.z
+                            vertex.y
                         );
                 glEnd();
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                
+                glRotatef(90, 1.0, 0.0, 0.0);
+                glScalef(1/0.8, 1/0.8, 1/0.8);
+                glTranslatef(-obj.world_cords.x - 0.5, -0.5, -obj.world_cords.z - 0.5);
             }
     }
 }
@@ -417,13 +432,10 @@ void opengl_3d_init()
 
     glMatrixMode(GL_PROJECTION);
     glm::mat4 proj_mat = glm::frustum(
-        -0.1f,  0.1f,
-        -0.1f,  0.1f,
-         0.1f,  50.f
+        -0.5f,  0.5f,
+        -0.5f,  0.5f,
+         0.75f,  100.f
     );
-
-    /* int32_t aspect_ratio = (float) window_size.x / (float) window_size.y;
-    glm::mat4 proj_mat = glm::perspective(60, aspect_ratio, 2, 100); */
 
     glLoadMatrixf(glm::value_ptr(proj_mat));
 }; 
@@ -434,9 +446,9 @@ void drawn_2d_context()
 
     drawn_tiles();
 
-    drawn_pins();
+    ortho_axis(false);
 
-    ortho_axis(true);
+    drawn_pins();
 }
 
 void drawn_3d_context()
@@ -456,41 +468,26 @@ void drawn_3d_context()
     drawn_objs();
 }
 
-void print_tiles_map()
+void get_mouse_position()
 {
-    for (Tile tile : tiles_map)
-    {
-        std::cout << "Tile Sides -> X : ["      << tile.side_x.x 
-                  << ", "                       << tile.side_x.y
-                  << "] ,";
-        
-        std::cout << " Y : ["  << tile.side_y.x 
-                  << ", "      << tile.side_y.y
-                  << "] \t"; 
+    glm::vec2 aux_tile_len;
+    
+    mouse_position = sf::Mouse::getPosition(window);
+    world_position = window.mapPixelToCoords(mouse_position);
+    world_size     = window.mapPixelToCoords(window_size);
 
-        std::cout << "World Cords -> X : ["     << tile.world_cords.x 
-                  << ", "                       << tile.world_cords.y
-                  << "] \t";
-
-        std::cout << "Selected : "     << tile.selected
-                  << "\t";
-
-        std::cout << "Focused : "     << tile.focused
-                  << "\t";
-
-        std::cout << "Has Object : "   << tile.has_object
-                  << "\t"            << std::endl;
-    }
-
-    std::cout << "TilesMap Len: "  << tiles_map.size() 
-              << std::endl;
+    aux_tile_len = glm::vec2(
+                                (world_size.x / (2.f * ortho_value.x)), 
+                                (world_size.y / (ortho_value.y))
+    ); 
+    aux_position = glm::vec2((int32_t) (world_position.x / aux_tile_len.x),
+                                                   (int32_t) (world_position.y / aux_tile_len.y)
+    );
 }
-
-int z = 1, x = 1;
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
+    window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
     window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(true);
@@ -501,16 +498,17 @@ int main()
         .eye =  glm::vec3(0, 1.5, 0),
         .at  =  focused_object,
         .up  =  glm::vec3(0, 1, 0)
-    }; //Standard cam config
+    };
 
     cam_obj.world_cords = main_cam.eye;
-    cam_obj.obj_color   =  glm::vec4(0.8, 0.8, 0.8, 1);
+    cam_obj.obj_color   = glm::vec4(0.8, 0.8, 0.8, 1);
 
     object_list.push_back(cam_obj);
 
-    bool run = true;
-    //while(window.isOpen())
-    while(run)
+    srand(time(NULL));
+    bool running = true;
+
+    while(running)
     {   
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.25, 0.25, 0.25, 1);
@@ -522,8 +520,7 @@ int main()
             switch (event.type)
             {
                 case sf::Event::Closed:
-                    //window.close();
-                    run = false;
+                    running = false;
                     break;
                 case sf::Event::Resized:
                     window_size = sf::Vector2i(event.size.width, event.size.height);
@@ -532,21 +529,7 @@ int main()
                     switch (event.mouseButton.button)
                     {
                         case sf::Mouse::Button::Left:
-                            mouse_position = sf::Mouse::getPosition(window);
-                            world_position = window.mapPixelToCoords(mouse_position);
-                            world_size     = window.mapPixelToCoords(window_size);
-
-                            aux_tile_len = glm::vec2(
-                                                    (world_size.x / (2.f * ortho_value.x)), 
-                                                    (world_size.y / (ortho_value.y))
-                            ); 
-                            aux_position = glm::vec2((int32_t) (world_position.x / aux_tile_len.x),
-                                                   (int32_t) (world_position.y / aux_tile_len.y)
-                            );
-
-                            std::cout << "["  << aux_position.x
-                                      << ", " << aux_position.y
-                                      << "]"  << std::endl;
+                            get_mouse_position();
 
                             for(int32_t i = 0; i < tiles_map.size(); i++)
                             {
@@ -568,21 +551,7 @@ int main()
                                 has_selected = false;
                             break;
                     case sf::Mouse::Button::Right:
-                            mouse_position = sf::Mouse::getPosition(window);
-                            world_position = window.mapPixelToCoords(mouse_position);
-                            world_size     = window.mapPixelToCoords(window_size);
-
-                            aux_tile_len = glm::vec2(
-                                                    (world_size.x / (2.f * ortho_value.x)), 
-                                                    (world_size.y / (ortho_value.y))
-                            ); 
-                            aux_position = glm::vec2((int32_t) (world_position.x / aux_tile_len.x),
-                                                   (int32_t) (world_position.y / aux_tile_len.y)
-                            );
-
-                            std::cout << "["  << aux_position.x
-                                      << ", " << aux_position.y
-                                      << "]"  << std::endl;
+                            get_mouse_position();
 
                             for(int32_t i = 0; i < tiles_map.size(); i++)
                             {
@@ -621,10 +590,7 @@ int main()
                     switch (event.key.code)
                     {
                         case sf::Keyboard::Escape:
-                            run = false;
-                            break;
-                        case sf::Keyboard::D:
-                            print_tiles_map();
+                            running = false;
                             break;
                         case sf::Keyboard::R:
                             aux_obj.world_cords = glm::vec3(
@@ -639,17 +605,42 @@ int main()
                                 (rand() % 255) / 255.f,
                                 1.0
                             );
+                            
+                            aux_obj.obj_type = (OBJECT_TYPE) (rand() % 4);
 
-                            aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/cube.obj");
+                            switch (aux_obj.obj_type)
+                            {
+                            case CUBE:
+                                aux_obj.polygon_vertexs = obj_loader("../obj/cube.obj");
+                                break;
+                            case PYRAMID:
+                                aux_obj.polygon_vertexs = obj_loader("../obj/pyramid.obj");
+                                break;
+                            case ETHER:
+                                aux_obj.polygon_vertexs = obj_loader("../obj/ether.obj");
+                                break;
+                            case CONE:
+                                aux_obj.polygon_vertexs = obj_loader("../obj/cone.obj");
+                                break;
+                            }
                             
                             for(int32_t i = 0; i < tiles_map.size(); i++)
                                 if(tiles_map[i].world_cords.x == aux_obj.world_cords.x &&
                                    tiles_map[i].world_cords.y == aux_obj.world_cords.z &&
                                    !tiles_map[i].has_object   && object_list.size() < tiles_map.size() - 1
                                 )
-
                                     object_list.push_back(aux_obj);
                             break;
+                            case sf::Keyboard::Delete:
+                                for(int32_t i = 1; i < object_list.size(); i++)
+                                {
+                                    if(object_list[i].world_cords.x == selected_tile.x   &&
+                                    object_list[i].world_cords.z == selected_tile.y   && 
+                                    tiles_map[selected_tile.z].has_object  &&
+                                    tiles_map[selected_tile.z].selected)
+                                        object_list.erase(object_list.begin() + i);
+                                }
+                                break;
                         case sf::Keyboard::Right:
                             for(int32_t i = 0; i < object_list.size(); i++)
                             {
