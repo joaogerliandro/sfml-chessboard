@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <cmath>
@@ -111,10 +110,7 @@ std::vector<glm::vec3> obj_loader(const char* obj_path)
     glm::vec3 aux_vec3;
 
     if(!in_file.is_open())
-    {
-        std::cout << std::filesystem::current_path() << std::endl;
         throw "ERRO: Can't open the file !";
-    }
 
     while(std::getline(in_file, line))
     {
