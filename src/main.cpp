@@ -302,9 +302,6 @@ void drawn_3d_board()
 
 void drawn_pins()
 {
-    if(object_list.empty())
-        return;
-
     glm::vec2 center_point;
 
     for(int32_t i = 0; i < tiles_map.size(); i++)
@@ -459,7 +456,7 @@ void drawn_3d_context()
 
     drawn_3d_board();
 
-    frustum_axis(true);
+    frustum_axis(false);
 
     drawn_objs();
 }
@@ -607,16 +604,16 @@ int main()
                             switch (aux_obj.obj_type)
                             {
                             case CUBE:
-                                aux_obj.polygon_vertexs = obj_loader("../obj/cube.obj");
+                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/cube.obj");
                                 break;
                             case PYRAMID:
-                                aux_obj.polygon_vertexs = obj_loader("../obj/pyramid.obj");
+                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/pyramid.obj");
                                 break;
                             case ETHER:
-                                aux_obj.polygon_vertexs = obj_loader("../obj/ether.obj");
+                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/ether.obj");
                                 break;
                             case CONE:
-                                aux_obj.polygon_vertexs = obj_loader("../obj/cone.obj");
+                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/cone.obj");
                                 break;
                             }
                             
@@ -634,7 +631,17 @@ int main()
                                     object_list[i].world_cords.z == selected_tile.y   && 
                                     tiles_map[selected_tile.z].has_object  &&
                                     tiles_map[selected_tile.z].selected)
+                                    {
                                         object_list.erase(object_list.begin() + i);
+                                        tiles_map[selected_tile.z].has_object = false;
+
+                                        if(tiles_map[selected_tile.z].focused)
+                                        {
+                                            tiles_map[selected_tile.z].focused = false;
+                                            has_focused = false;
+                                            focused_object = glm::vec3(8, 1, 8);
+                                        }
+                                    }
                                 }
                                 break;
                         case sf::Keyboard::Right:
@@ -800,9 +807,9 @@ int main()
                         case sf::Keyboard::F11:
                             fullscreen = !(fullscreen);
                             if(fullscreen)
-                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen);
+                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen, gl_settings());
                             else
-                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default);
+                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
                             break;
                     }
                     break;    
