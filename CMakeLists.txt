@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 IF(WIN32)
     include_directories(
+        ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/lib/SFML/include
         ${CMAKE_SOURCE_DIR}/lib/GLM
     )
@@ -20,6 +21,7 @@ ENDIF()
 add_executable(
     ${PROJECT_NAME}
     src/main.cpp
+    include/gl_init.hpp
 )
 
 set_target_properties(

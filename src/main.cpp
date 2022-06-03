@@ -11,6 +11,8 @@
 
 #include <glm/ext.hpp>
 
+#include <gl_init.hpp>
+
 #define SIDES  360
 #define ANGLE  3.141 * 2.f / SIDES
 #define RADIUS 0.35
@@ -75,18 +77,6 @@ sf::Vector2i mouse_position, window_size;
 sf::Vector2f world_size    , world_position;
 
 sf::RenderWindow window;
-
-sf::ContextSettings gl_settings()
-{
-    sf::ContextSettings settings;
-    settings.depthBits         = 24;
-    settings.stencilBits       = 8;
-    settings.antialiasingLevel = 4;
-    settings.majorVersion      = 3;
-    settings.minorVersion      = 0;
-    
-    return settings;
-}
 
 std::vector<glm::vec3> obj_loader(const char* obj_path)
 {
@@ -392,47 +382,6 @@ void drawn_objs()
     }
 }
 
-void opengl_init()
-{
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glPointSize(10.f);
-    glLineWidth(5.f);
-}
-
-void opengl_2d_init()
-{
-    glDisable(GL_DEPTH_TEST);
-    glm::mat4 idt_mat = glm::mat4(1.0);
-    glLoadMatrixf(glm::value_ptr(idt_mat));
-
-    glMatrixMode(GL_PROJECTION);
-    glm::mat4 proj_mat = glm::ortho(
-        0.f, ortho_value.x,
-        0.f, ortho_value.y,
-        -ortho_value.z, ortho_value.z
-    );
-    glLoadMatrixf(glm::value_ptr(proj_mat));
-}
-
-void opengl_3d_init()
-{
-    glEnable(GL_DEPTH_TEST);
-    glm::mat4 idt_mat = glm::mat4(1.0);
-    glLoadMatrixf(glm::value_ptr(idt_mat));
-
-    glMatrixMode(GL_PROJECTION);
-    glm::mat4 proj_mat = glm::frustum(
-        -0.5f,  0.5f,
-        -0.5f,  0.5f,
-         0.75f,  100.f
-    );
-
-    glLoadMatrixf(glm::value_ptr(proj_mat));
-}; 
-
 void drawn_2d_context()
 {
     glMatrixMode(GL_MODELVIEW);
@@ -503,8 +452,6 @@ int main()
 
     while(running)
     {   
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.25, 0.25, 0.25, 1);
         opengl_init();
         
         sf::Event event;
@@ -604,16 +551,16 @@ int main()
                             switch (aux_obj.obj_type)
                             {
                             case CUBE:
-                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/cube.obj");
+                                aux_obj.polygon_vertexs = obj_loader("C:\\Users\\joao.martins\\Documents\\GitHub\\sfml-chessboard\\obj\\cube.obj");
                                 break;
                             case PYRAMID:
-                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/pyramid.obj");
+                                aux_obj.polygon_vertexs = obj_loader("C:\\Users\\joao.martins\\Documents\\GitHub\\sfml-chessboard\\obj\\pyramid.obj");
                                 break;
                             case ETHER:
-                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/ether.obj");
+                                aux_obj.polygon_vertexs = obj_loader("C:\\Users\\joao.martins\\Documents\\GitHub\\sfml-chessboard\\obj\\ether.obj");
                                 break;
                             case CONE:
-                                aux_obj.polygon_vertexs = obj_loader("/home/gerliandro/Documentos/git/sfml-chessboard/obj/cone.obj");
+                                aux_obj.polygon_vertexs = obj_loader("C:\\Users\\joao.martins\\Documents\\GitHub\\sfml-chessboard\\obj\\cone.obj");
                                 break;
                             }
                             
@@ -642,6 +589,21 @@ int main()
                                             focused_object = glm::vec3(8, 1, 8);
                                         }
                                     }
+                                }
+                                break;
+                            case sf::Keyboard::End:
+                                while(object_list.size() != 1)
+                                    object_list.erase(object_list.begin() + 1);
+
+                                for(int32_t i = 1; i < tiles_map.size(); i++)
+                                    if(tiles_map[i].has_object)
+                                        tiles_map[i].has_object = false;
+
+                                if(tiles_map[selected_tile.z].focused)
+                                {
+                                    tiles_map[selected_tile.z].focused = false;
+                                    has_focused = false;
+                                    focused_object = glm::vec3(8, 1, 8);
                                 }
                                 break;
                         case sf::Keyboard::Right:
@@ -808,8 +770,10 @@ int main()
                             fullscreen = !(fullscreen);
                             if(fullscreen)
                                 window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen, gl_settings());
+
                             else
                                 window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
+
                             break;
                     }
                     break;    
@@ -819,7 +783,7 @@ int main()
         cam_obj.world_cords = object_list[0].world_cords;
 
         glViewport(0, 0, window_size.x / 2 , window_size.y);
-        opengl_2d_init();
+        opengl_2d_init(ortho_value);
         drawn_2d_context();
 
         glViewport(window_size.x / 2, 0, window_size.x / 2 , window_size.y);
