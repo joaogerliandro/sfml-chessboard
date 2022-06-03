@@ -23,6 +23,8 @@ add_executable(
     src/main.cpp
     include/gl_init.hpp
     include/object.hpp
+    include/tile.hpp
+    include/drawn_context.hpp
 )
 
 set_target_properties(

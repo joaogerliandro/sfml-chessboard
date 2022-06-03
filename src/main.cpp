@@ -13,21 +13,12 @@
 
 #include <gl_init.hpp>
 #include <object.hpp>
+#include <tile.hpp>
+#include <drawn_context.hpp>
 
 #define SIDES  360
 #define ANGLE  3.141 * 2.f / SIDES
 #define RADIUS 0.35
-
-typedef struct tile
-{
-    glm::vec2 side_x, side_y;
-
-    glm::vec2 world_cords;
-
-    bool      selected   = false,
-              focused    = false,
-              has_object = false;
-}Tile;
 
 typedef struct cam
 {   
@@ -46,62 +37,18 @@ bool fullscreen    = false,
      tiles_maped   = false,
      has_selected  = false,
      has_focused   = false;
+
 std::string title_name("OpenGL Chessboard");
 
 glm::vec2 aux_position;
 
-glm::vec3 ortho_value  , tile_len, selected_tile,
-          focused_object = glm::vec3(8, 1, 8);
-
-glm::vec4 highlight_color(0.0, 0.8, 0.0 , 0.2),
-          focused_color  (1.0, 0.8, 0.0,  0.2),
-          track_color    (0.0, 0.0, 0.8, 0.2);
+glm::vec3 tile_len, selected_tile,
+          focused_object = init_focused;
 
 sf::Vector2i mouse_position, window_size;
 sf::Vector2f world_size    , world_position;
 
 sf::RenderWindow window;
-
-void ortho_axis(bool lever)
-{
-    if(!lever)
-        return;
-
-    glBegin(GL_LINES);
-        //Eixo x em vermelho
-        glColor3f(1.0, 0.0, 0.0);
-        glVertex3f(0, ortho_value.y / 2, 0);
-        glVertex3f(ortho_value.x, ortho_value.y / 2, 0); 
-        
-        //Eixo y em verde
-        glColor3f(0.0, 1.0, 0.0);  
-        glVertex3f(ortho_value.x / 2,  ortho_value.y, 0); 
-        glVertex3f(ortho_value.x / 2, 0, 0); 
-    glEnd();
-}
-
-void frustum_axis(bool lever)
-{
-    if(!lever)
-        return;
-   
-    glBegin(GL_LINES);
-        //Eixo x em vermelho
-        glColor3f(1.0, 0.0, 0.0);
-        glVertex3f( 0.0, 0.0, 0.0);
-        glVertex3f(10.0, 0.0, 0.0);
-
-        //Eixo y em verde
-        glColor3f(0.0, 1.0, 0.0);
-        glVertex3f( 0.0, 0.0, 0.0);
-        glVertex3f( 0.0,10.0, 0.0);
-
-        //Eixo z em azul
-        glColor3f(0.0, 0.0, 1.0);
-        glVertex3f( 0.0, 0.0, 0.0);
-        glVertex3f( 0.0, 0.0,10.0);
-    glEnd();
-}
 
 void drawn_tiles()
 {
@@ -347,7 +294,6 @@ int main()
     window.setKeyRepeatEnabled(true);
     window.setActive(true);
 
-    ortho_value = glm::vec3(8, 8, 1);
     main_cam = {
         .eye =  glm::vec3(0, 1.5, 0),
         .at  =  focused_object,
@@ -699,7 +645,7 @@ int main()
         cam_obj.world_cords = object_list[0].world_cords;
 
         glViewport(0, 0, window_size.x / 2 , window_size.y);
-        opengl_2d_init(ortho_value);
+        opengl_2d_init();
         drawn_2d_context();
 
         glViewport(window_size.x / 2, 0, window_size.x / 2 , window_size.y);
