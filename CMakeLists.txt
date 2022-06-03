@@ -22,6 +22,7 @@ add_executable(
     ${PROJECT_NAME}
     src/main.cpp
     include/gl_init.hpp
+    include/object.hpp
 )
 
 set_target_properties(
