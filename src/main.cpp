@@ -27,14 +27,121 @@ Object cam_obj, aux_obj;
 
 Board sfml_board;
 
+bool fullscreen    = false,
+     tiles_maped   = false,
+     has_selected  = false,
+     has_focused   = false;
+
 std::string title_name("OpenGL Chessboard");
 
 glm::vec2 aux_position;
+
+glm::vec3 tile_len, selected_tile,
+          focused_object = init_focused;
 
 sf::Vector2i mouse_position, window_size;
 sf::Vector2f world_size    , world_position;
 
 sf::RenderWindow window;
+
+void drawn_tiles()
+{
+    Tile aux_obj;
+
+    for(int32_t i = 0; i < sfml_board.tiles_map.size(); i++)
+    {
+        if(sfml_board.tiles_map[i].selected)
+        {
+            has_selected = true;
+            selected_tile = glm::vec3(sfml_board.tiles_map[i].world_cords.x, sfml_board.tiles_map[i].world_cords.y, i);
+        }
+
+        if(sfml_board.tiles_map[i].focused)
+        {
+            has_focused = true;
+            focused_object = glm::vec3(sfml_board.tiles_map[i].world_cords.x, 1.0, sfml_board.tiles_map[i].world_cords.y);
+        }
+    }
+
+    for(int x = 0; x < ortho_value.x; x++)
+    {
+        for(int y = 0; y < ortho_value.y; y++)
+        {
+            if((x + y) % 2 == 0)
+                glColor3f(0, 0, 0);
+            else
+                glColor3f(1, 1, 1);
+
+            if(x == focused_object.x && y == focused_object.z && has_focused)
+                glColor4fv(glm::value_ptr(focused_color));
+
+            if(x == selected_tile.x && y == selected_tile.y && has_selected)
+                glColor4fv(glm::value_ptr(highlight_color));
+
+            if(x == selected_tile.x  && y == selected_tile.y  &&
+               x == focused_object.x && y == focused_object.z && 
+               has_focused           && has_selected)
+                glColor4fv(glm::value_ptr(track_color));
+
+            glBegin(GL_QUADS);
+                glVertex3f(x, ortho_value.y - y, ortho_value.z); //A: x, y
+                
+                glVertex3f(x + 1, ortho_value.y - y, ortho_value.z); //B: x+len, y
+
+                glVertex3f(x + 1, ortho_value.y - (y + 1), ortho_value.z ); //D: x+len, y+len
+
+                glVertex3f(x, ortho_value.y - (y + 1), ortho_value.z); //C: x, y+len
+            glEnd();
+
+            if(!tiles_maped)
+            {
+                aux_obj.side_x = glm::vec2(
+                    x , x + 1
+                );
+                aux_obj.side_y = glm::vec2(
+                    ortho_value.y - y , ortho_value.y - (y + 1)
+                );
+
+                aux_obj.world_cords = glm::vec2(x, y);
+                sfml_board.tiles_map.push_back(aux_obj);
+            } 
+        }
+    }
+
+    tiles_maped = true;
+}
+
+void drawn_3d_board()
+{
+    for(int x = 0; x < ortho_value.x; x++)
+    {
+        for(int z = 0; z < ortho_value.y; z++)
+        {
+            if((x + z) % 2 == 0)
+                glColor3f(0, 0, 0);
+            else
+                glColor3f(1, 1, 1);
+
+            if(x == focused_object.x && z == focused_object.z && has_focused)
+                glColor4fv(glm::value_ptr(focused_color));
+
+            if(x == selected_tile.x && z == selected_tile.y && has_selected)
+                glColor4fv(glm::value_ptr(highlight_color));
+
+            if(x == selected_tile.x  && z == selected_tile.y  &&
+               x == focused_object.x && z == focused_object.z && 
+               has_focused           && has_selected)
+                glColor4fv(glm::value_ptr(track_color));
+
+            glBegin(GL_QUADS);
+                glVertex3f(x    , 0, z); //A: x, y
+                glVertex3f(x + 1, 0, z); //B: x+len, y
+                glVertex3f(x + 1, 0, z + 1); //D: x+len, y+len
+                glVertex3f(x    , 0, z + 1); //C: x, y+len
+            glEnd();
+        }
+    }
+}
 
 void drawn_pins()
 {
@@ -128,28 +235,28 @@ void drawn_objs()
     }
 }
 
-void drawn_2d_context(Board board)
+void drawn_2d_context()
 {
     glMatrixMode(GL_MODELVIEW);
 
-    drawn_tiles(board);
+    drawn_tiles();
 
     ortho_axis(false);
 
     drawn_pins();
 }
 
-void drawn_3d_context(Board board)
+void drawn_3d_context()
 {
     glMatrixMode(GL_MODELVIEW);
 
     main_cam.eye = cam_obj.world_cords;
-    main_cam.at  = sfml_board.focused_object;
+    main_cam.at  = focused_object;
 
     glm::mat4 view_mat = glm::lookAt(main_cam.eye, main_cam.at, main_cam.up);
     glLoadMatrixf(glm::value_ptr(view_mat));
 
-    drawn_3d_board(board);
+    drawn_3d_board();
 
     frustum_axis(false);
 
@@ -183,7 +290,7 @@ int main()
 
     main_cam = {
         .eye =  glm::vec3(0, 1.5, 0),
-        .at  =  sfml_board.focused_object,
+        .at  =  focused_object,
         .up  =  glm::vec3(0, 1, 0)
     };
 
@@ -223,7 +330,7 @@ int main()
                                     if(sfml_board.tiles_map[i].selected)
                                     {
                                         sfml_board.tiles_map[i].selected = false;
-                                        sfml_board.has_selected = false;
+                                        has_selected = false;
                                     }
                                     else    
                                         sfml_board.tiles_map[i].selected = true;
@@ -233,7 +340,7 @@ int main()
                             }
 
                             if(!(aux_position.x < ortho_value.x))
-                                sfml_board.has_selected = false;
+                                has_selected = false;
                             break;
                     case sf::Mouse::Button::Right:
                             get_mouse_position();
@@ -247,7 +354,7 @@ int main()
                                     if(sfml_board.tiles_map[i].focused)
                                     {
                                         sfml_board.tiles_map[i].focused = false;
-                                        sfml_board.has_focused = false;
+                                        has_focused = false;
                                     }
                                     else    
                                         sfml_board.tiles_map[i].focused = true;
@@ -255,7 +362,7 @@ int main()
                                     if(aux_position.x == cam_obj.world_cords.x && aux_position.y == cam_obj.world_cords.z)
                                     {
                                         sfml_board.tiles_map[i].focused = false;
-                                        sfml_board.has_focused = false;
+                                        has_focused = false;
                                     }
                                 }
                                 else
@@ -264,10 +371,10 @@ int main()
                             }
 
                             if(!(aux_position.x < ortho_value.x))
-                                sfml_board.has_focused = false; 
+                                has_focused = false; 
 
-                            if(!sfml_board.has_focused)
-                                sfml_board.focused_object = glm::vec3(8, 1, 8);
+                            if(!has_focused)
+                                focused_object = glm::vec3(8, 1, 8);
 
                             break;
                     }
@@ -319,19 +426,19 @@ int main()
                             case sf::Keyboard::Delete:
                                 for(int32_t i = 1; i < sfml_board.object_list.size(); i++)
                                 {
-                                    if(sfml_board.object_list[i].world_cords.x == sfml_board.selected_tile.x   &&
-                                    sfml_board.object_list[i].world_cords.z == sfml_board.selected_tile.y   && 
-                                    sfml_board.tiles_map[sfml_board.selected_tile.z].has_object  &&
-                                    sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                    if(sfml_board.object_list[i].world_cords.x == selected_tile.x   &&
+                                    sfml_board.object_list[i].world_cords.z == selected_tile.y   && 
+                                    sfml_board.tiles_map[selected_tile.z].has_object  &&
+                                    sfml_board.tiles_map[selected_tile.z].selected)
                                     {
                                         sfml_board.object_list.erase(sfml_board.object_list.begin() + i);
-                                        sfml_board.tiles_map[sfml_board.selected_tile.z].has_object = false;
+                                        sfml_board.tiles_map[selected_tile.z].has_object = false;
 
-                                        if(sfml_board.tiles_map[sfml_board.selected_tile.z].focused)
+                                        if(sfml_board.tiles_map[selected_tile.z].focused)
                                         {
-                                            sfml_board.tiles_map[sfml_board.selected_tile.z].focused = false;
-                                            sfml_board.has_focused = false;
-                                            sfml_board.focused_object = glm::vec3(8, 1, 8);
+                                            sfml_board.tiles_map[selected_tile.z].focused = false;
+                                            has_focused = false;
+                                            focused_object = glm::vec3(8, 1, 8);
                                         }
                                     }
                                 }
@@ -344,20 +451,20 @@ int main()
                                     if(sfml_board.tiles_map[i].has_object)
                                         sfml_board.tiles_map[i].has_object = false;
 
-                                if(sfml_board.tiles_map[sfml_board.selected_tile.z].focused)
+                                if(sfml_board.tiles_map[selected_tile.z].focused)
                                 {
-                                    sfml_board.tiles_map[sfml_board.selected_tile.z].focused = false;
-                                    sfml_board.has_focused = false;
-                                    sfml_board.focused_object = glm::vec3(8, 1, 8);
+                                    sfml_board.tiles_map[selected_tile.z].focused = false;
+                                    has_focused = false;
+                                    focused_object = glm::vec3(8, 1, 8);
                                 }
                                 break;
                         case sf::Keyboard::Right:
                             for(int32_t i = 0; i < sfml_board.object_list.size(); i++)
                             {
-                                if(sfml_board.object_list[i].world_cords.x == sfml_board.selected_tile.x   &&
-                                   sfml_board.object_list[i].world_cords.z == sfml_board.selected_tile.y   && 
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].has_object  &&
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                if(sfml_board.object_list[i].world_cords.x == selected_tile.x   &&
+                                   sfml_board.object_list[i].world_cords.z == selected_tile.y   && 
+                                   sfml_board.tiles_map[selected_tile.z].has_object  &&
+                                   sfml_board.tiles_map[selected_tile.z].selected)
                                 {
                                     if(sfml_board.object_list[i].world_cords.x + 1 <= ortho_value.x)
                                     {
@@ -367,24 +474,24 @@ int main()
                                                 sfml_board.tiles_map[j].world_cords.y == sfml_board.object_list[i].world_cords.z     &&
                                                !sfml_board.tiles_map[j].has_object)
                                             {   
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].selected   = false;
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].has_object = false;
+                                                sfml_board.tiles_map[selected_tile.z].selected   = false;
+                                                sfml_board.tiles_map[selected_tile.z].has_object = false;
                                                 
                                                 sfml_board.tiles_map[j].selected   = true;
                                                 sfml_board.tiles_map[j].has_object = true;
 
-                                                if(sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.x == sfml_board.focused_object.x &&
-                                                   sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.y == sfml_board.focused_object.z
+                                                if(sfml_board.tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   sfml_board.tiles_map[selected_tile.z].world_cords.y == focused_object.z
                                                 )
                                                 {
-                                                    sfml_board.tiles_map[sfml_board.selected_tile.z].focused   = false;
+                                                    sfml_board.tiles_map[selected_tile.z].focused   = false;
                                                     sfml_board.tiles_map[j].focused                 = true;
-                                                    sfml_board.focused_object.x++;
+                                                    focused_object.x++;
                                                 }
                                             }
                                         }
 
-                                        if(!sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                        if(!sfml_board.tiles_map[selected_tile.z].selected)
                                             sfml_board.object_list[i].world_cords.x++;
                                 
                                     }
@@ -394,10 +501,10 @@ int main()
                         case sf::Keyboard::Left:
                             for(int32_t i = 0; i < sfml_board.object_list.size(); i++)
                             {
-                                if(sfml_board.object_list[i].world_cords.x == sfml_board.selected_tile.x   &&
-                                   sfml_board.object_list[i].world_cords.z == sfml_board.selected_tile.y   && 
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].has_object  &&
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                if(sfml_board.object_list[i].world_cords.x == selected_tile.x   &&
+                                   sfml_board.object_list[i].world_cords.z == selected_tile.y   && 
+                                   sfml_board.tiles_map[selected_tile.z].has_object  &&
+                                   sfml_board.tiles_map[selected_tile.z].selected)
                                 {
                                     if(sfml_board.object_list[i].world_cords.x - 1 >= 0)
                                     {
@@ -407,24 +514,24 @@ int main()
                                                 sfml_board.tiles_map[j].world_cords.y == sfml_board.object_list[i].world_cords.z     &&
                                                !sfml_board.tiles_map[j].has_object)
                                             {
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].selected   = false;
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].has_object = false;
+                                                sfml_board.tiles_map[selected_tile.z].selected   = false;
+                                                sfml_board.tiles_map[selected_tile.z].has_object = false;
                                                 
                                                 sfml_board.tiles_map[j].selected   = true;
                                                 sfml_board.tiles_map[j].has_object = true;
 
-                                                if(sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.x == sfml_board.focused_object.x &&
-                                                   sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.y == sfml_board.focused_object.z
+                                                if(sfml_board.tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   sfml_board.tiles_map[selected_tile.z].world_cords.y == focused_object.z
                                                 )
                                                 {
-                                                    sfml_board.tiles_map[sfml_board.selected_tile.z].focused   = false;
+                                                    sfml_board.tiles_map[selected_tile.z].focused   = false;
                                                     sfml_board.tiles_map[j].focused                 = true;
-                                                    sfml_board.focused_object.x--;
+                                                    focused_object.x--;
                                                 }
                                             }
                                         }
 
-                                        if(!sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                        if(!sfml_board.tiles_map[selected_tile.z].selected)
                                             sfml_board.object_list[i].world_cords.x--;
 
                                     }
@@ -434,10 +541,10 @@ int main()
                         case sf::Keyboard::Down:
                             for(int32_t i = 0; i < sfml_board.object_list.size(); i++)
                             {
-                                if(sfml_board.object_list[i].world_cords.x == sfml_board.selected_tile.x   &&
-                                   sfml_board.object_list[i].world_cords.z == sfml_board.selected_tile.y   && 
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].has_object  &&
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                if(sfml_board.object_list[i].world_cords.x == selected_tile.x   &&
+                                   sfml_board.object_list[i].world_cords.z == selected_tile.y   && 
+                                   sfml_board.tiles_map[selected_tile.z].has_object  &&
+                                   sfml_board.tiles_map[selected_tile.z].selected)
                                 {
                                     if(sfml_board.object_list[i].world_cords.z + 1 <= ortho_value.y)
                                     {
@@ -447,24 +554,24 @@ int main()
                                                 sfml_board.tiles_map[j].world_cords.y == sfml_board.object_list[i].world_cords.z + 1 &&
                                                !sfml_board.tiles_map[j].has_object)
                                             {
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].selected   = false;
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].has_object = false;
+                                                sfml_board.tiles_map[selected_tile.z].selected   = false;
+                                                sfml_board.tiles_map[selected_tile.z].has_object = false;
                                                 
                                                 sfml_board.tiles_map[j].selected   = true;
                                                 sfml_board.tiles_map[j].has_object = true;
 
-                                                if(sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.x == sfml_board.focused_object.x &&
-                                                   sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.y == sfml_board.focused_object.z
+                                                if(sfml_board.tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   sfml_board.tiles_map[selected_tile.z].world_cords.y == focused_object.z
                                                 )
                                                 {
-                                                    sfml_board.tiles_map[sfml_board.selected_tile.z].focused   = false;
+                                                    sfml_board.tiles_map[selected_tile.z].focused   = false;
                                                     sfml_board.tiles_map[j].focused                 = true;
-                                                    sfml_board.focused_object.z++;
+                                                    focused_object.z++;
                                                 }
                                             }
                                         }
 
-                                        if(!sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                        if(!sfml_board.tiles_map[selected_tile.z].selected)
                                             sfml_board.object_list[i].world_cords.z++;
 
                                     }
@@ -474,10 +581,10 @@ int main()
                         case sf::Keyboard::Up:
                             for(int32_t i = 0; i < sfml_board.object_list.size(); i++)
                             {
-                                if(sfml_board.object_list[i].world_cords.x == sfml_board.selected_tile.x   &&
-                                   sfml_board.object_list[i].world_cords.z == sfml_board.selected_tile.y   && 
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].has_object  &&
-                                   sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                if(sfml_board.object_list[i].world_cords.x == selected_tile.x   &&
+                                   sfml_board.object_list[i].world_cords.z == selected_tile.y   && 
+                                   sfml_board.tiles_map[selected_tile.z].has_object  &&
+                                   sfml_board.tiles_map[selected_tile.z].selected)
                                 {
                                     if(sfml_board.object_list[i].world_cords.z - 1 >= 0)
                                     {
@@ -487,24 +594,24 @@ int main()
                                                sfml_board.tiles_map[j].world_cords.y == sfml_board.object_list[i].world_cords.z - 1 &&
                                                !sfml_board.tiles_map[j].has_object)
                                             {
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].selected   = false;
-                                                sfml_board.tiles_map[sfml_board.selected_tile.z].has_object = false;
+                                                sfml_board.tiles_map[selected_tile.z].selected   = false;
+                                                sfml_board.tiles_map[selected_tile.z].has_object = false;
                                                 
                                                 sfml_board.tiles_map[j].selected   = true;
                                                 sfml_board.tiles_map[j].has_object = true;
 
-                                                if(sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.x == sfml_board.focused_object.x &&
-                                                   sfml_board.tiles_map[sfml_board.selected_tile.z].world_cords.y == sfml_board.focused_object.z
+                                                if(sfml_board.tiles_map[selected_tile.z].world_cords.x == focused_object.x &&
+                                                   sfml_board.tiles_map[selected_tile.z].world_cords.y == focused_object.z
                                                 )
                                                 {
-                                                    sfml_board.tiles_map[sfml_board.selected_tile.z].focused   = false;
+                                                    sfml_board.tiles_map[selected_tile.z].focused   = false;
                                                     sfml_board.tiles_map[j].focused                 = true;
-                                                    sfml_board.focused_object.z--;
+                                                    focused_object.z--;
                                                 }
                                             }
                                         }
 
-                                        if(!sfml_board.tiles_map[sfml_board.selected_tile.z].selected)
+                                        if(!sfml_board.tiles_map[selected_tile.z].selected)
                                             sfml_board.object_list[i].world_cords.z--;
 
                                     }
@@ -512,8 +619,8 @@ int main()
                             }
                             break;
                         case sf::Keyboard::F11:
-                            sfml_board.fullscreen = !(sfml_board.fullscreen);
-                            if(sfml_board.fullscreen)
+                            fullscreen = !(fullscreen);
+                            if(fullscreen)
                             {
                                 window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen, gl_settings());
                                 window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
@@ -533,11 +640,11 @@ int main()
 
         glViewport(0, 0, window_size.x / 2 , window_size.y);
         opengl_2d_init();
-        drawn_2d_context(sfml_board);
+        drawn_2d_context();
 
         glViewport(window_size.x / 2, 0, window_size.x / 2 , window_size.y);
         opengl_3d_init();
-        drawn_3d_context(sfml_board);
+        drawn_3d_context();
         
         window.display();
     }
