@@ -27,11 +27,6 @@ Object cam_obj, aux_obj;
 
 Board sfml_board;
 
-bool fullscreen    = false,
-     tiles_maped   = false,
-     has_selected  = false,
-     has_focused   = false;
-
 std::string title_name("OpenGL Chessboard");
 
 glm::vec2 aux_position;
@@ -52,13 +47,13 @@ void drawn_tiles()
     {
         if(sfml_board.tiles_map[i].selected)
         {
-            has_selected = true;
+            sfml_board.has_selected = true;
             selected_tile = glm::vec3(sfml_board.tiles_map[i].world_cords.x, sfml_board.tiles_map[i].world_cords.y, i);
         }
 
         if(sfml_board.tiles_map[i].focused)
         {
-            has_focused = true;
+            sfml_board.has_focused = true;
             focused_object = glm::vec3(sfml_board.tiles_map[i].world_cords.x, 1.0, sfml_board.tiles_map[i].world_cords.y);
         }
     }
@@ -72,15 +67,15 @@ void drawn_tiles()
             else
                 glColor3f(1, 1, 1);
 
-            if(x == focused_object.x && y == focused_object.z && has_focused)
+            if(x == focused_object.x && y == focused_object.z && sfml_board.has_focused)
                 glColor4fv(glm::value_ptr(focused_color));
 
-            if(x == selected_tile.x && y == selected_tile.y && has_selected)
+            if(x == selected_tile.x && y == selected_tile.y && sfml_board.has_selected)
                 glColor4fv(glm::value_ptr(highlight_color));
 
-            if(x == selected_tile.x  && y == selected_tile.y  &&
-               x == focused_object.x && y == focused_object.z && 
-               has_focused           && has_selected)
+            if(x == selected_tile.x   && y == selected_tile.y  &&
+               x == focused_object.x  && y == focused_object.z && 
+               sfml_board.has_focused && sfml_board.has_selected)
                 glColor4fv(glm::value_ptr(track_color));
 
             glBegin(GL_QUADS);
@@ -93,7 +88,7 @@ void drawn_tiles()
                 glVertex3f(x, ortho_value.y - (y + 1), ortho_value.z); //C: x, y+len
             glEnd();
 
-            if(!tiles_maped)
+            if(!sfml_board.tiles_maped)
             {
                 aux_obj.side_x = glm::vec2(
                     x , x + 1
@@ -108,7 +103,7 @@ void drawn_tiles()
         }
     }
 
-    tiles_maped = true;
+    sfml_board.tiles_maped = true;
 }
 
 void drawn_3d_board()
@@ -122,15 +117,15 @@ void drawn_3d_board()
             else
                 glColor3f(1, 1, 1);
 
-            if(x == focused_object.x && z == focused_object.z && has_focused)
+            if(x == focused_object.x && z == focused_object.z && sfml_board.has_focused)
                 glColor4fv(glm::value_ptr(focused_color));
 
-            if(x == selected_tile.x && z == selected_tile.y && has_selected)
+            if(x == selected_tile.x && z == selected_tile.y && sfml_board.has_selected)
                 glColor4fv(glm::value_ptr(highlight_color));
 
-            if(x == selected_tile.x  && z == selected_tile.y  &&
-               x == focused_object.x && z == focused_object.z && 
-               has_focused           && has_selected)
+            if(x == selected_tile.x   && z == selected_tile.y  &&
+               x == focused_object.x  && z == focused_object.z && 
+               sfml_board.has_focused && sfml_board.has_selected)
                 glColor4fv(glm::value_ptr(track_color));
 
             glBegin(GL_QUADS);
@@ -330,7 +325,7 @@ int main()
                                     if(sfml_board.tiles_map[i].selected)
                                     {
                                         sfml_board.tiles_map[i].selected = false;
-                                        has_selected = false;
+                                        sfml_board.has_selected = false;
                                     }
                                     else    
                                         sfml_board.tiles_map[i].selected = true;
@@ -340,7 +335,7 @@ int main()
                             }
 
                             if(!(aux_position.x < ortho_value.x))
-                                has_selected = false;
+                                sfml_board.has_selected = false;
                             break;
                     case sf::Mouse::Button::Right:
                             get_mouse_position();
@@ -354,7 +349,7 @@ int main()
                                     if(sfml_board.tiles_map[i].focused)
                                     {
                                         sfml_board.tiles_map[i].focused = false;
-                                        has_focused = false;
+                                        sfml_board.has_focused = false;
                                     }
                                     else    
                                         sfml_board.tiles_map[i].focused = true;
@@ -362,7 +357,7 @@ int main()
                                     if(aux_position.x == cam_obj.world_cords.x && aux_position.y == cam_obj.world_cords.z)
                                     {
                                         sfml_board.tiles_map[i].focused = false;
-                                        has_focused = false;
+                                        sfml_board.has_focused = false;
                                     }
                                 }
                                 else
@@ -371,9 +366,9 @@ int main()
                             }
 
                             if(!(aux_position.x < ortho_value.x))
-                                has_focused = false; 
+                                sfml_board.has_focused = false; 
 
-                            if(!has_focused)
+                            if(!sfml_board.has_focused)
                                 focused_object = glm::vec3(8, 1, 8);
 
                             break;
@@ -437,7 +432,7 @@ int main()
                                         if(sfml_board.tiles_map[selected_tile.z].focused)
                                         {
                                             sfml_board.tiles_map[selected_tile.z].focused = false;
-                                            has_focused = false;
+                                            sfml_board.has_focused = false;
                                             focused_object = glm::vec3(8, 1, 8);
                                         }
                                     }
@@ -454,7 +449,7 @@ int main()
                                 if(sfml_board.tiles_map[selected_tile.z].focused)
                                 {
                                     sfml_board.tiles_map[selected_tile.z].focused = false;
-                                    has_focused = false;
+                                    sfml_board.has_focused = false;
                                     focused_object = glm::vec3(8, 1, 8);
                                 }
                                 break;
@@ -619,8 +614,8 @@ int main()
                             }
                             break;
                         case sf::Keyboard::F11:
-                            fullscreen = !(fullscreen);
-                            if(fullscreen)
+                            sfml_board.fullscreen = !(sfml_board.fullscreen);
+                            if(sfml_board.fullscreen)
                             {
                                 window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen, gl_settings());
                                 window_size = sf::Vector2i(window.getSize().x, window.getSize().y);

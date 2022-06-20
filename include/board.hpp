@@ -13,4 +13,9 @@ typedef struct
     std::vector<Tile>   tiles_map;
     std::vector<Object> object_list;
 
+    bool fullscreen    = false,
+         tiles_maped   = false,
+         has_selected  = false,
+         has_focused   = false;
+
 } Board;
