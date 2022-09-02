@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include <SFML/Window/Event.hpp>
+#include <SFML/Window/VideoMode.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/OpenGL.hpp>
 

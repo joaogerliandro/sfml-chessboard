@@ -5,7 +5,7 @@
 
 #include <glm/ext.hpp>
 
-std::string obj_dir = "C:\\Users\\joao.martins\\Documents\\GitHub\\sfml-chessboard\\obj\\";
+std::string obj_dir = "../../../obj/";
 
 enum OBJECT_TYPE : int32_t
 {
