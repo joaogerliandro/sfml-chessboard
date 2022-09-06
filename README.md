@@ -2,8 +2,8 @@
 
 ## Needs to be done
 
--- Better obj file loader
--- Lighting and Shadow efects
+-- Better obj file loader__
+-- Lighting and Shadow efects__
 -- Controls handle refactor + upgrade
 -- Better project modularization
 -- Textures 
