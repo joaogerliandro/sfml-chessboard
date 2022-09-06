@@ -280,6 +280,8 @@ void get_mouse_position()
 
 int main()
 {
+    load_config();
+    
     window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, get_settings());
     window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
     window.setFramerateLimit(60);
