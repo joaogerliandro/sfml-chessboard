@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <exception>
 
 #include <SFML/Window/ContextSettings.hpp>
 

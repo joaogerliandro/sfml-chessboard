@@ -32,9 +32,17 @@ uint32_t read_value(std::stringstream& str_stream, std::string option)
         str_stream >> line_content;
         if(is_number(line_content))
             return std::atoi(line_content.c_str());
+        else
+        {
+            std::string ex = "WARNING: The " + option + " value must be valid ! The default value will be kept.\n";
+            throw std::invalid_argument(ex);
+        }
     }
     else
-        std::cout << "WARNING: Could not load " << option << " configuration ! The default value will be kept." << std::endl;
+    {
+        std::string ex = "WARNING: Could not load " + option + " configuration ! The default configuration will be kept.\n";
+        throw std::invalid_argument(ex);
+    }
 }
 
 void read_config(std::fstream& cfg_file)
@@ -49,20 +57,62 @@ void read_config(std::fstream& cfg_file)
         str_stream.clear();
         str_stream.str(file_line);
 
-        str_stream >> line_content;
+        str_stream >> line_content;        
 
         if(line_content == "DepthBits")
-            settings.depthBits = read_value(str_stream, line_content);
+            try
+            {
+                settings.depthBits = read_value(str_stream, line_content);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
         else if(line_content == "StencilBits")
-            settings.stencilBits = read_value(str_stream, line_content);
+            try
+            {
+                settings.stencilBits = read_value(str_stream, line_content);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
         else if(line_content == "AntialiasingLevel")
-            settings.antialiasingLevel = read_value(str_stream, line_content);
+            try
+            {
+                settings.antialiasingLevel = read_value(str_stream, line_content);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
         else if(line_content == "GlMajorVersion")
-            settings.majorVersion = read_value(str_stream, line_content);
+            try
+            {
+                settings.majorVersion = read_value(str_stream, line_content);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
         else if(line_content == "GlMinorVersion")
-            settings.minorVersion = read_value(str_stream, line_content);
+            try
+            {
+                settings.minorVersion = read_value(str_stream, line_content);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
         else if(line_content == "SRgbCapable")
-            settings.sRgbCapable = read_value(str_stream, line_content);
+            try
+            {
+                settings.sRgbCapable = read_value(str_stream, line_content);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
     }
 }
 
@@ -73,8 +123,7 @@ void load_default_setting()
     settings.antialiasingLevel =  4;
     settings.majorVersion      =  3;
     settings.minorVersion      =  0;
-
-    settings.sRgbCapable = false;
+    settings.sRgbCapable       =  0;
 }
 
 void load_config(const char* file_path)
@@ -85,14 +134,16 @@ void load_config(const char* file_path)
 
     if(!config_file.is_open())
     {
-        std::cout << "WARNING: Could not read settings file ! Creating a new ..." << std::endl;
+        std::cout << "WARNING: Could not read configuration file ! Creating a new ..." << std::endl;
 
         config_file.open(file_path, std::fstream::in | std::fstream::out | std::fstream::trunc);
         
         if(!config_file.is_open())
-            throw "ERROR: Unable to create settings file !";
+            throw "ERROR: Unable to create settings file ! Leaving the program ...";
 
         write_cfg_template(config_file);
+
+        std::cout << "INFO: Configuration file created !" << std::endl;
     }
     
     read_config(config_file);
