@@ -2,11 +2,13 @@
 
 ## Needs to be done
 
+- Better object handler
 - Better obj file loader
-- Lighting and Shadow efects
+- Textures 
 - Controls handle refactor + upgrade
 - Better project modularization
-- Textures 
+- Lighting and Shadow efects
 - Code refactor (structured to OOP and C++ newer ISO)
 - A real logic for a chess game
+- Multiplayer (Maybe ...)
 ...
