@@ -1,8 +1,9 @@
- #include <iostream>
- #include <fstream>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
- #include <SFML/Window/ContextSettings.hpp>
+#include <SFML/Window/ContextSettings.hpp>
 
- void load_config(const char* file_path = "config.cfg");
+void load_config(const char* file_path = "config.cfg");
 
- sf::ContextSettings get_settings();
+sf::ContextSettings get_settings();
