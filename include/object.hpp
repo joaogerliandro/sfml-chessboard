@@ -5,7 +5,7 @@
 
 #include <glm/ext.hpp>
 
-std::string obj_dir = "../../../obj/";
+std::string obj_dir = "../../../assets/meshes/";
 
 enum OBJECT_TYPE : int32_t
 {

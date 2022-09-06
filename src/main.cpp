@@ -8,6 +8,7 @@
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/VideoMode.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/Image.hpp>
 #include <SFML/OpenGL.hpp>
 
 #include <glm/ext.hpp>
@@ -287,6 +288,10 @@ int main()
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(true);
     window.setActive(true);
+
+    sf::Image sfml_icon;
+    sfml_icon.loadFromFile("../../../assets/icon/icon.png");
+    window.setIcon(sfml_icon.getSize(), sfml_icon.getPixelsPtr());
 
     main_cam = {
         .eye =  glm::vec3(0, 1.5, 0),
