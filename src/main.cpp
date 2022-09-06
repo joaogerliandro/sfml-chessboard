@@ -19,6 +19,8 @@
 #include <drawn_context.hpp>
 #include <board.hpp>
 
+#include <config_loader.hpp>
+
 #define SIDES  360
 #define ANGLE  3.141 * 2.f / SIDES
 #define RADIUS 0.35
@@ -278,7 +280,9 @@ void get_mouse_position()
 
 int main()
 {
-    window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
+    load_config();
+    
+    window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, get_settings());
     window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
     window.setFramerateLimit(60);
     window.setKeyRepeatEnabled(true);
@@ -618,12 +622,12 @@ int main()
                             sfml_board.fullscreen = !(sfml_board.fullscreen);
                             if(sfml_board.fullscreen)
                             {
-                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen, gl_settings());
+                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Fullscreen, get_settings());
                                 window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
                             }
                             else
                             {
-                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, gl_settings());
+                                window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, get_settings());
                                 window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
                             }
                             break;

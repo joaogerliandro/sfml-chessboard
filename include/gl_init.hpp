@@ -54,15 +54,3 @@ void opengl_3d_init()
 
     glLoadMatrixf(glm::value_ptr(proj_mat));
 }; 
-
-sf::ContextSettings gl_settings()
-{
-    sf::ContextSettings settings;
-    settings.depthBits         = 24;
-    settings.stencilBits       = 8;
-    settings.antialiasingLevel = 4;
-    settings.majorVersion      = 3;
-    settings.minorVersion      = 0;
-    
-    return settings;
-}

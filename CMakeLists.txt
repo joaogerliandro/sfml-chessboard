@@ -18,6 +18,8 @@ set(BUILD_SHARED_LIBS FALSE)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}/)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}/)
 
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
 FetchContent_Declare(
     sfml
     GIT_REPOSITORY https://github.com/SFML/SFML
