@@ -21,6 +21,7 @@
 #include <board.hpp>
 
 #include <config_loader.hpp>
+#include <controls.hpp>
 
 #define SIDES  360
 #define ANGLE  3.141 * 2.f / SIDES
