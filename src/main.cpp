@@ -209,10 +209,10 @@ void drawn_objs()
                 
                 glColor4fv(glm::value_ptr(obj.obj_color));
 
-                if(obj.meshe_ptr != nullptr)
+                if(obj.mesh_ptr != nullptr)
                 {
                     glBegin(polygon_type);
-                        for(glm::vec3 vertex : obj.meshe_ptr->polygon_vertexs)
+                        for(glm::vec3 vertex : obj.mesh_ptr->polygon_vertexs)
                             glVertex3f(
                                 vertex.x,
                                 vertex.z,
@@ -223,7 +223,7 @@ void drawn_objs()
                     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                     glColor4f(0.0, 0.0, 0.0, 1.0);
                     glBegin(polygon_type);
-                        for(glm::vec3 vertex : obj.meshe_ptr->polygon_vertexs)
+                        for(glm::vec3 vertex : obj.mesh_ptr->polygon_vertexs)
                             glVertex3f(
                                 vertex.x,
                                 vertex.z,
@@ -413,7 +413,7 @@ int main()
                             
                             aux_obj.obj_type = (OBJECT_TYPE) (rand() % 4);
 
-                            aux_obj.meshe_ptr = &(loaded_objs[aux_obj.obj_type]);
+                            aux_obj.mesh_ptr = &(loaded_objs[aux_obj.obj_type]);
                             
                             for(int32_t i = 0; i < sfml_board.tiles_map.size(); i++)
                                 if( sfml_board.tiles_map[i].world_cords.x == aux_obj.world_cords.x &&

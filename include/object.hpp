@@ -5,6 +5,8 @@
 
 #include <glm/ext.hpp>
 
+#include <SFML/Graphics/Image.hpp>
+
 std::string obj_dir = "../../../assets/meshes/";
 
 enum OBJECT_TYPE : int32_t
@@ -17,7 +19,14 @@ enum OBJECT_TYPE : int32_t
 
 typedef struct
 {
-    std::vector<glm::vec3> polygon_vertexs;
+    sf::Image texture_raw;
+}Texture;
+
+typedef struct
+{
+    std::vector<glm::vec3>  polygon_vertexs;
+    std::vector<glm::uvec2> texture_vertexs;
+    std::vector<glm::vec2>  normals_vertexs; 
 } Meshe;
 
 typedef struct
@@ -25,7 +34,8 @@ typedef struct
     glm::vec3 world_cords;
     glm::vec4 obj_color;
 
-    Meshe *meshe_ptr;
+    Meshe   *mesh_ptr;
+    Texture *text_ptr;
 
     OBJECT_TYPE obj_type;
 } Object;
