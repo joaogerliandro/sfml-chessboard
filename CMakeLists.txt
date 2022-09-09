@@ -44,6 +44,8 @@ add_executable(
     ${SRCS}
 )
 
+set_source_files_properties(${SRCS} PROPERTIES COMPILE_OPTIONS "-Wno-unused-result")
+
 target_link_libraries(
     ${PROJECT_NAME}
     PRIVATE
