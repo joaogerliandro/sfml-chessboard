@@ -2,7 +2,7 @@
 
 ## Needs to be done
 
-- Better object handler
+- Better object handler (updated in 09/09/2022)
 - Better obj file loader
 - Textures 
 - Controls handle refactor + upgrade
