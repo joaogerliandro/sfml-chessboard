@@ -30,8 +30,6 @@
 Camera main_cam;
 Object cam_obj, aux_obj;
 
-std::vector<Meshe> loaded_objs;
-
 Board sfml_board;
 
 std::string title_name("OpenGL Chessboard");
@@ -290,7 +288,7 @@ int main()
 {
     load_config();
 
-    loaded_objs = load_objs();
+    sfml_board.loaded_objs = load_objs();
     
     window.create(sf::VideoMode::getDesktopMode(), title_name, sf::Style::Default, get_settings());
     window_size = sf::Vector2i(window.getSize().x, window.getSize().y);
@@ -414,7 +412,7 @@ int main()
                             
                             aux_obj.obj_type = (OBJECT_TYPE) (rand() % 4);
 
-                            aux_obj.mesh_ptr = &(loaded_objs[aux_obj.obj_type]);
+                            aux_obj.mesh_ptr = &(sfml_board.loaded_objs[aux_obj.obj_type]);
                             
                             for(int32_t i = 0; i < sfml_board.tiles_map.size(); i++)
                                 if( sfml_board.tiles_map[i].world_cords.x == aux_obj.world_cords.x &&
